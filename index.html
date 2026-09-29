@@ -3,82 +3,106 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Orby Bots - Deriv</title>
 <style>
-:root{--bg:#0d1117;--card:#161b22;--bd:#2a313c;--tx:#e6edf3;--mu:#8b949e;--ac:#2f81f7;--up:#26a69a;--dn:#ef5350}
-*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--tx);font:14px system-ui,sans-serif}
-header{display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between;padding:10px 14px;border-bottom:1px solid var(--bd)}
-h1{font-size:17px;margin:0}main{padding:12px;display:grid;gap:12px;grid-template-columns:1fr;max-width:1200px;margin:auto}
-@media(min-width:900px){main{grid-template-columns:2fr 1fr}}
-.card{background:var(--card);border:1px solid var(--bd);border-radius:10px;padding:12px}
-.card h2{font-size:13px;margin:0 0 8px;color:var(--mu);text-transform:uppercase;letter-spacing:.05em}
-button,select,input{background:#21262d;color:var(--tx);border:1px solid var(--bd);border-radius:6px;padding:8px 10px;font:inherit}
-button{cursor:pointer}button.p{background:var(--ac);border-color:var(--ac)}button.r{background:#8e2b2b}
-.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:8px}
-canvas{width:100%;height:320px;display:block;background:#0b0f14;border-radius:6px}
-.bot{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--bd)}
-.bot small{color:var(--mu);display:block}.up{color:var(--up)}.dn{color:var(--dn)}.mu{color:var(--mu)}
-#log{max-height:220px;overflow:auto;font-size:12px;font-family:ui-monospace,monospace}
-#log div{padding:3px 0;border-bottom:1px solid #20262e}
-.badge{padding:2px 8px;border-radius:99px;font-size:12px;background:#21262d}
-.demo{background:#1f6f43}.real{background:#8e2b2b}
-.stat{display:grid;grid-template-columns:1fr 1fr;gap:8px}.stat b{font-size:18px;display:block}
-.full{grid-column:1/-1}
+:root{--bg:#0a0a0a;--card:#141414;--bd:#2a2a2a;--tx:#fff;--mu:#9a9a9a;--rd:#e10600}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--tx);font:14px system-ui,sans-serif;display:flex;min-height:100vh}
+#side{width:220px;background:#000;border-right:1px solid var(--bd);padding:16px 10px;position:sticky;top:0;height:100vh;flex-shrink:0;display:flex;flex-direction:column;gap:4px;z-index:20}
+.logo{font-weight:800;font-size:18px;padding:4px 10px 16px}.logo span{color:var(--rd)}
+.nav{background:none;border:0;color:var(--mu);text-align:left;padding:11px 12px;border-radius:8px;font-size:14px;cursor:pointer}
+.nav:hover{background:#1a1a1a;color:#fff}.nav.act{background:var(--rd);color:#fff;font-weight:600}
+#wrap{flex:1;min-width:0}
+.top{display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid var(--bd);background:#000;position:sticky;top:0;z-index:10}
+.top h1{font-size:17px;margin:0}#burger{display:none}
+.page{display:none;padding:14px;max-width:1150px;margin:auto}.page.on{display:block}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:10px;padding:14px;margin-bottom:12px}
+.card h2{font-size:12px;margin:0 0 10px;color:var(--mu);text-transform:uppercase;letter-spacing:.06em}
+.kpis{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-bottom:12px}
+@media(min-width:900px){.kpis{grid-template-columns:repeat(4,1fr)}}
+.kpi{background:var(--card);border:1px solid var(--bd);border-radius:10px;padding:14px;border-top:3px solid #fff}
+.kpi.r{border-top-color:var(--rd)}.kpi span{color:var(--mu);font-size:12px;text-transform:uppercase;letter-spacing:.05em}
+.kpi b{display:block;font-size:26px;margin-top:6px}
+.grid2{display:grid;gap:12px;grid-template-columns:1fr}@media(min-width:900px){.grid2{grid-template-columns:2fr 1fr}}
+button,select,input{background:#1c1c1c;color:#fff;border:1px solid var(--bd);border-radius:6px;padding:9px 10px;font:inherit}
+button{cursor:pointer}button.p{background:var(--rd);border-color:var(--rd);font-weight:600}button.r{background:#fff;color:#000;border-color:#fff;font-weight:600}
+.row{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:10px}
+canvas{width:100%;height:340px;display:block;background:#000;border-radius:6px}
+.bot{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:12px 0;border-bottom:1px solid var(--bd)}
+.bot small{color:var(--mu);display:block;margin-top:2px}.bot input{width:20px;height:20px;accent-color:var(--rd)}
+.up{color:#fff}.dn{color:var(--rd)}.mu{color:var(--mu)}
+#log{max-height:60vh;overflow:auto;font-size:12px;font-family:ui-monospace,monospace}
+#log div{padding:5px 0;border-bottom:1px solid #1f1f1f}
+.badge{padding:3px 10px;border-radius:99px;font-size:12px;border:1px solid var(--bd);background:#111}
+.demo{background:#fff;color:#000;border-color:#fff;font-weight:700}.real{background:var(--rd);border-color:var(--rd);font-weight:700}
+@media(max-width:800px){#side{position:fixed;left:-240px;transition:left .2s}#side.open{left:0}#burger{display:block}}
 </style></head><body>
-<header>
- <h1>📈 Orby Bots <span class="mu">· Deriv</span></h1>
- <div class="row" style="margin:0">
-  <select id="accsel" style="display:none"></select><span id="acct" class="badge">Desconectado</span>
-  <b id="bal"></b>
-  <button id="login" class="p">Entrar com Deriv</button>
-  <button id="logout" class="r" style="display:none">Sair</button>
- </div>
-</header>
-<main>
- <section class="card">
-  <div class="row">
-   <select id="sym"><option value="R_100">Volatility 100</option><option value="R_75">Volatility 75</option><option value="R_50">Volatility 50</option><option value="R_25">Volatility 25</option><option value="R_10">Volatility 10</option><option value="frxEURUSD">EUR/USD</option><option value="frxGBPUSD">GBP/USD</option><option value="cryBTCUSD">BTC/USD</option></select>
-   <select id="gran"><option value="60">M1</option><option value="300">M5</option><option value="900">M15</option><option value="3600">H1</option></select>
-   <span id="price" class="mu"></span>
+<aside id="side">
+ <div class="logo">ORBY <span>BOTS</span></div>
+ <button class="nav act" data-p="dash" data-t="Dashboard">📊 Dashboard</button>
+ <button class="nav" data-p="bots" data-t="Bots">🤖 Bots</button>
+ <button class="nav" data-p="gest" data-t="Gestão de banca">💰 Gestão de banca</button>
+ <button class="nav" data-p="hist" data-t="Histórico">📜 Histórico</button>
+ <button class="nav" data-p="conf" data-t="Conexão">🔌 Conexão</button>
+</aside>
+<div id="wrap">
+ <div class="top">
+  <div class="row" style="margin:0"><button id="burger">☰</button><h1 id="ttl">Dashboard</h1></div>
+  <div class="row" style="margin:0">
+   <select id="accsel" style="display:none"></select><span id="acct" class="badge">Desconectado</span>
+   <b id="bal"></b>
+   <button id="login" class="p">Entrar com Deriv</button><button id="logout" class="r" style="display:none">Sair</button>
   </div>
-  <canvas id="cv"></canvas>
-  <div class="mu" style="margin-top:6px;font-size:12px"><span style="color:#f0b429">━ SMA 20</span> &nbsp;<span style="color:#58a6ff">━ SMA 99</span> &nbsp;<span style="color:#d2a8ff">━ SMA 200</span></div>
-  <div class="card" style="margin-top:12px"><h2>Análise gráfica</h2><div id="ana" class="mu">Aguardando candles…</div></div>
- </section>
+ </div>
 
- <section style="display:grid;gap:12px;align-content:start">
-  <div class="card"><h2>Painel</h2>
-   <div class="stat">
-    <div><span class="mu">Saldo</span><b id="s1">—</b></div>
-    <div><span class="mu">Operações</span><b id="s2">0</b></div>
-    <div><span class="mu">Ganhos</span><b id="s3" class="up">0</b></div>
-    <div><span class="mu">Perdas</span><b id="s4" class="dn">0</b></div>
-    <div><span class="mu">Próxima entrada</span><b id="s6">—</b></div>
-    <div><span class="mu">Bot</span><b id="s7" class="dn">OFF</b></div>
-    <div class="full"><span class="mu">Resultado da sessão</span><b id="s5">0.00</b></div>
+ <section class="page on" id="p-dash">
+  <div class="kpis">
+   <div class="kpi"><span>Saldo da conta</span><b id="s1b">—</b></div>
+   <div class="kpi r"><span>PNL da sessão</span><b id="s5">0.00</b></div>
+   <div class="kpi"><span>Win</span><b id="s3">0</b></div>
+   <div class="kpi r"><span>Loss</span><b id="s4" class="dn">0</b></div>
+  </div>
+  <div class="kpis">
+   <div class="kpi"><span>Operações</span><b id="s2">0</b></div>
+   <div class="kpi"><span>Taxa de acerto</span><b id="s8">—</b></div>
+   <div class="kpi"><span>Próxima entrada</span><b id="s6">—</b></div>
+   <div class="kpi r"><span>Bot</span><b id="s7" class="dn">OFF</b></div>
+  </div>
+  <div class="grid2">
+   <div class="card">
+    <div class="row"><select id="sym"><option value="R_100">Volatility 100</option><option value="R_75">Volatility 75</option><option value="R_50">Volatility 50</option><option value="R_25">Volatility 25</option><option value="R_10">Volatility 10</option><option value="frxEURUSD">EUR/USD</option><option value="frxGBPUSD">GBP/USD</option><option value="cryBTCUSD">BTC/USD</option></select>
+    <select id="gran"><option value="60">M1</option><option value="300">M5</option><option value="900">M15</option><option value="3600">H1</option></select><span id="price" class="mu"></span></div>
+    <canvas id="cv"></canvas>
+    <div class="mu" style="margin-top:6px;font-size:12px">━ SMA 20 (branca) &nbsp;<span style="color:#ff6b63">━ SMA 99</span> &nbsp;<span style="color:#8a8a8a">━ SMA 200</span></div>
+   </div>
+   <div>
+    <div class="card"><h2>Controle</h2><button id="pw" class="p" style="width:100%;padding:14px;font-size:15px">▶ Ligar bot</button></div>
+    <div class="card"><h2>Análise gráfica</h2><div id="ana" class="mu">Aguardando candles…</div></div>
    </div>
   </div>
-  <div class="card"><h2>Bots</h2>
+ </section>
+
+ <section class="page" id="p-bots"><div class="card"><h2>Estratégias</h2>
    <div class="bot"><div>Pullback na média + engolfo<small>Médias 20/99/200 alinhadas; toque na SMA20 e engolfo da vela anterior</small></div><input type="checkbox" data-bot="pbe" checked></div>
    <div class="bot"><div>Rompimento<small>Fecha acima/abaixo da máxima/mínima das últimas 20 velas</small></div><input type="checkbox" data-bot="brk"></div>
    <div class="bot"><div>Pullback<small>Tendência pelas médias, retorno e retomada da SMA20</small></div><input type="checkbox" data-bot="pb"></div>
    <div class="bot"><div>SMC<small>Varredura de liquidez em topo/fundo de swing com rejeição</small></div><input type="checkbox" data-bot="smc"></div>
-  </div>
-  <div class="card"><h2>Execução e gestão</h2>
-   <button id="pw" class="p" style="width:100%;padding:12px;font-size:15px;margin-bottom:10px">▶ Ligar bot</button>
-   <div class="row"><label>Stake inicial <input id="stake" type="number" value="1" min="0.35" step="0.5" style="width:80px"></label>
-   <label>Duração (min) <input id="dur" type="number" value="5" min="1" style="width:70px"></label></div>
+ </div></section>
+
+ <section class="page" id="p-gest"><div class="card"><h2>Execução e gestão</h2>
+   <div class="row"><label>Stake inicial <input id="stake" type="number" value="1" min="0.35" step="0.5" style="width:90px"></label>
+   <label>Duração (min) <input id="dur" type="number" value="5" min="1" style="width:80px"></label></div>
    <div class="row"><label>Gestão <select id="mg"><option value="fixa">Stake fixo</option><option value="soros">Sorosgale</option></select></label></div>
-   <div class="row"><label>Stop Loss <input id="sl" type="number" value="10" min="0" step="1" style="width:80px"></label>
-   <label>Stop Win <input id="sw" type="number" value="10" min="0" step="1" style="width:80px"></label></div>
+   <div class="row"><label>Stop Loss <input id="sl" type="number" value="10" min="0" step="1" style="width:90px"></label>
+   <label>Stop Win <input id="sw" type="number" value="10" min="0" step="1" style="width:90px"></label></div>
    <div class="row"><label><input type="checkbox" id="sigonly"> Apenas sinais (não operar)</label></div>
    <div class="mu" style="font-size:12px">Stop Loss/Win em valor da moeda da conta, contado desde que você liga o bot (0 = sem limite). Sorosgale: após perda, entra com metade do prejuízo acumulado; ao ganhar, entra com a entrada anterior + o lucro, até recuperar tudo e voltar ao stake inicial. Use conta demo primeiro.</div>
-  </div>
-  <div class="card"><h2>Conexão</h2>
-   <div class="row"><label>App ID (client_id)<br><input id="appid" value="34x77i6yGiC7moieYUIKD" style="width:100%;max-width:280px"></label></div>
+ </div></section>
+
+ <section class="page" id="p-hist"><div class="card"><h2>Sinais e operações</h2><div id="log"></div></div></section>
+
+ <section class="page" id="p-conf"><div class="card"><h2>Conexão</h2>
+   <div class="row"><label>App ID (client_id)<br><input id="appid" value="34x77i6yGiC7moieYUIKD" style="width:100%;max-width:300px"></label></div>
    <div class="mu" style="font-size:12px">Login OAuth 2.0 (PKCE). A URL de redirecionamento cadastrada na Deriv deve ser idêntica ao endereço deste site.</div>
-  </div>
- </section>
- <section class="card full" style="grid-column:1/-1"><h2>Sinais e operações</h2><div id="log"></div></section>
-</main>
+ </div></section>
+</div>
 <script>
 const $=id=>document.getElementById(id);
 let ws,candles=[],token=null,acctId=null,cur="USD",stats={n:0,w:0,l:0,pl:0},lastSig="";
@@ -159,7 +183,7 @@ function handle(m){
  if(m.msg_type==="authorize"){acctId=m.authorize.loginid;cur=m.authorize.currency;
   const demo=m.authorize.is_virtual;$("acct").textContent=(demo?"DEMO ":"REAL ")+acctId;$("acct").className="badge "+(demo?"demo":"real");
   $("login").style.display="none";$("logout").style.display="";sendAcc({balance:1,subscribe:1});log("Conectado: "+acctId+(demo?" (demo)":" (REAL)"))}
- else if(m.msg_type==="balance"){cur=m.balance.currency;$("bal").textContent=m.balance.balance.toFixed(2)+" "+m.balance.currency;$("s1").textContent=m.balance.balance.toFixed(2)}
+ else if(m.msg_type==="balance"){cur=m.balance.currency;$("bal").textContent=m.balance.balance.toFixed(2)+" "+m.balance.currency;$("s1b").textContent=m.balance.balance.toFixed(2)}
  else if(m.msg_type==="candles"){candles=m.candles.map(c=>({t:c.epoch,o:+c.open,h:+c.high,l:+c.low,c:+c.close}));draw();analyse()}
  else if(m.msg_type==="ohlc"){const o=m.ohlc,t=+o.open_time,c={t,o:+o.open,h:+o.high,l:+o.low,c:+o.close},L=candles[candles.length-1];
   if(L&&L.t===t)candles[candles.length-1]=c;else{candles.push(c);if(candles.length>400)candles.shift();onNewCandle()}
@@ -231,7 +255,7 @@ function trade(type){
  if(busy&&Date.now()-busyAt<(num("dur")*60+90)*1000){log("Aguardando a operação anterior terminar.","mu");return}
  if(!nextStake)resetStake();
  curStake=nextStake;busy=true;busyAt=Date.now();
- sendAcc({proposal:1,amount:curStake,basis:"stake",contract_type:type,currency:cur,duration:+$("dur").value,duration_unit:"m",symbol:$("sym").value,passthrough:{bot:1}});
+ sendAcc({proposal:1,amount:curStake,basis:"stake",contract_type:type,currency:cur,duration:+$("dur").value,duration_unit:"m",underlying_symbol:$("sym").value,passthrough:{bot:1}});
 }
 function analyse(){
  const i=candles.length-2;if(i<200){$("ana").textContent="Carregando histórico ("+candles.length+"/200 velas mínimas)…";return}
@@ -247,12 +271,15 @@ function draw(){
  const N=Math.min(candles.length,Math.floor(W/7)),off=candles.length-N,v=candles.slice(off);if(!v.length)return;
  let hi=Math.max(...v.map(c=>c.h)),lo=Math.min(...v.map(c=>c.l));const pad=(hi-lo)*.05||1;hi+=pad;lo-=pad;
  const Y=p=>H-(p-lo)/(hi-lo)*H,w=W/N;
- v.forEach((c,k)=>{const cx=k*w+w/2,col=c.c>=c.o?"#26a69a":"#ef5350";x.strokeStyle=x.fillStyle=col;
+ v.forEach((c,k)=>{const cx=k*w+w/2,col=c.c>=c.o?"#f5f5f5":"#e10600";x.strokeStyle=x.fillStyle=col;
   x.beginPath();x.moveTo(cx,Y(c.h));x.lineTo(cx,Y(c.l));x.stroke();
   x.fillRect(cx-w*.35,Math.min(Y(c.o),Y(c.c)),w*.7,Math.max(1,Math.abs(Y(c.o)-Y(c.c))))});
- [[20,"#f0b429"],[99,"#58a6ff"],[200,"#d2a8ff"]].forEach(([n,col])=>{x.strokeStyle=col;x.lineWidth=1.5;x.beginPath();let s=false;
+ [[20,"#ffffff"],[99,"#ff6b63"],[200,"#8a8a8a"]].forEach(([n,col])=>{x.strokeStyle=col;x.lineWidth=1.5;x.beginPath();let s=false;
   for(let k=0;k<N;k++){const m=sma(n,off+k);if(m===null)continue;const px=k*w+w/2;s?x.lineTo(px,Y(m)):x.moveTo(px,Y(m));s=true}x.stroke();x.lineWidth=1});
 }
 addEventListener("resize",draw);
+document.querySelectorAll("[data-p]").forEach(b=>b.onclick=()=>{document.querySelectorAll(".page").forEach(x=>x.classList.remove("on"));$("p-"+b.dataset.p).classList.add("on");document.querySelectorAll("[data-p]").forEach(x=>x.classList.toggle("act",x===b));$("side").classList.remove("open");$("ttl").textContent=b.dataset.t;draw()});
+$("burger").onclick=()=>$("side").classList.toggle("open");
+setInterval(()=>{const t=stats.w+stats.l;$("s8").textContent=t?Math.round(stats.w/t*100)+"%":"—"},1000);
 init();
 </script></body></html>
