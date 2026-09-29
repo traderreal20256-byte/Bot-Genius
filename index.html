@@ -134,21 +134,22 @@ async function openAccount(id){
   const o=$("accsel").selectedOptions[0],demo=o&&o.dataset.demo==="1";cur=(o&&o.dataset.cur)||"USD";
   acc=new WebSocket(url);acc.onmessage=e=>handle(JSON.parse(e.data));
   acc.onopen=()=>{$("acct").textContent=demo?"DEMO":"REAL";$("acct").className="badge "+(demo?"demo":"real");log("Conta "+id+(demo?" (demo)":" (REAL)")+" conectada",demo?"up":"dn");sendAcc({balance:1,subscribe:1})};
-  acc.onclose=()=>{$("acct").textContent="Desconectado";$("acct").className="badge"};
+  acc.onclose=()=>{$("acct").textContent="Reconectando…";$("acct").className="badge";log("Conexão da conta caiu. Reconectando…","dn");setTimeout(()=>{if(access)openAccount($("accsel").value)},2000)};
  }catch(e){log("Erro ao conectar conta: "+e.message,"dn")}
 }
 
+setInterval(()=>{sendPub({ping:1});sendAcc({ping:1})},25000);
 // ---- Dados de mercado (WebSocket público) ----
 function connectPub(){pub=new WebSocket("wss://api.derivws.com/trading/v1/options/ws/public");
  pub.onopen=subscribeCandles;pub.onclose=()=>setTimeout(connectPub,3000);pub.onmessage=e=>handle(JSON.parse(e.data))}
 function subscribeCandles(){
- sendPub({forget_all:"ohlc"});candles=[];
+ sendPub({forget_all:"candles"});candles=[];
  sendPub({ticks_history:$("sym").value,adjust_start_time:1,count:300,end:"latest",style:"candles",granularity:+$("gran").value,subscribe:1});
 }
 $("sym").onchange=$("gran").onchange=subscribeCandles;
 
 function handle(m){
- if(m.error){log("Erro: "+m.error.message,"dn");return}
+ if(m.msg_type==="ping"||m.msg_type==="forget_all")return;if(m.error){log("Erro: "+m.error.message,"dn");return}
  if(m.msg_type==="authorize"){acctId=m.authorize.loginid;cur=m.authorize.currency;
   const demo=m.authorize.is_virtual;$("acct").textContent=(demo?"DEMO ":"REAL ")+acctId;$("acct").className="badge "+(demo?"demo":"real");
   $("login").style.display="none";$("logout").style.display="";sendAcc({balance:1,subscribe:1});log("Conectado: "+acctId+(demo?" (demo)":" (REAL)"))}
