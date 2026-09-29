@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="pt-BR"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Orby Bots - Deriv</title>
+<style>
+:root{--bg:#0d1117;--card:#161b22;--bd:#2a313c;--tx:#e6edf3;--mu:#8b949e;--ac:#2f81f7;--up:#26a69a;--dn:#ef5350}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--tx);font:14px system-ui,sans-serif}
+header{display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between;padding:10px 14px;border-bottom:1px solid var(--bd)}
+h1{font-size:17px;margin:0}main{padding:12px;display:grid;gap:12px;grid-template-columns:1fr;max-width:1200px;margin:auto}
+@media(min-width:900px){main{grid-template-columns:2fr 1fr}}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:10px;padding:12px}
+.card h2{font-size:13px;margin:0 0 8px;color:var(--mu);text-transform:uppercase;letter-spacing:.05em}
+button,select,input{background:#21262d;color:var(--tx);border:1px solid var(--bd);border-radius:6px;padding:8px 10px;font:inherit}
+button{cursor:pointer}button.p{background:var(--ac);border-color:var(--ac)}button.r{background:#8e2b2b}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:8px}
+canvas{width:100%;height:320px;display:block;background:#0b0f14;border-radius:6px}
+.bot{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--bd)}
+.bot small{color:var(--mu);display:block}.up{color:var(--up)}.dn{color:var(--dn)}.mu{color:var(--mu)}
+#log{max-height:220px;overflow:auto;font-size:12px;font-family:ui-monospace,monospace}
+#log div{padding:3px 0;border-bottom:1px solid #20262e}
+.badge{padding:2px 8px;border-radius:99px;font-size:12px;background:#21262d}
+.demo{background:#1f6f43}.real{background:#8e2b2b}
+.stat{display:grid;grid-template-columns:1fr 1fr;gap:8px}.stat b{font-size:18px;display:block}
+.full{grid-column:1/-1}
+</style></head><body>
+<header>
+ <h1>📈 Orby Bots <span class="mu">· Deriv</span></h1>
+ <div class="row" style="margin:0">
+  <span id="acct" class="badge">Desconectado</span>
+  <b id="bal"></b>
+  <button id="login" class="p">Entrar com Deriv</button>
+  <button id="logout" class="r" style="display:none">Sair</button>
+ </div>
+</header>
+<main>
+ <section class="card">
+  <div class="row">
+   <select id="sym"><option value="R_100">Volatility 100</option><option value="R_75">Volatility 75</option><option value="R_50">Volatility 50</option><option value="R_25">Volatility 25</option><option value="R_10">Volatility 10</option><option value="frxEURUSD">EUR/USD</option><option value="frxGBPUSD">GBP/USD</option><option value="cryBTCUSD">BTC/USD</option></select>
+   <select id="gran"><option value="60">M1</option><option value="300">M5</option><option value="900">M15</option><option value="3600">H1</option></select>
+   <span id="price" class="mu"></span>
+  </div>
+  <canvas id="cv"></canvas>
+  <div class="mu" style="margin-top:6px;font-size:12px"><span style="color:#f0b429">━ SMA 20</span> &nbsp;<span style="color:#58a6ff">━ SMA 99</span> &nbsp;<span style="color:#d2a8ff">━ SMA 200</span></div>
+  <div class="card" style="margin-top:12px"><h2>Análise gráfica</h2><div id="ana" class="mu">Aguardando candles…</div></div>
+ </section>
+
+ <section style="display:grid;gap:12px;align-content:start">
+  <div class="card"><h2>Painel</h2>
+   <div class="stat">
+    <div><span class="mu">Saldo</span><b id="s1">—</b></div>
+    <div><span class="mu">Operações</span><b id="s2">0</b></div>
+    <div><span class="mu">Ganhos</span><b id="s3" class="up">0</b></div>
+    <div><span class="mu">Perdas</span><b id="s4" class="dn">0</b></div>
+    <div class="full"><span class="mu">Resultado da sessão</span><b id="s5">0.00</b></div>
+   </div>
+  </div>
+  <div class="card"><h2>Bots</h2>
+   <div class="bot"><div>Pullback na média + engolfo<small>Médias 20/99/200 alinhadas; toque na SMA20 e engolfo da vela anterior</small></div><input type="checkbox" data-bot="pbe" checked></div>
+   <div class="bot"><div>Rompimento<small>Fecha acima/abaixo da máxima/mínima das últimas 20 velas</small></div><input type="checkbox" data-bot="brk"></div>
+   <div class="bot"><div>Pullback<small>Tendência pelas médias, retorno e retomada da SMA20</small></div><input type="checkbox" data-bot="pb"></div>
+   <div class="bot"><div>SMC<small>Varredura de liquidez em topo/fundo de swing com rejeição</small></div><input type="checkbox" data-bot="smc"></div>
+  </div>
+  <div class="card"><h2>Execução</h2>
+   <div class="row"><label>Stake <input id="stake" type="number" value="1" min="0.35" step="0.5" style="width:80px"></label>
+   <label>Duração (min) <input id="dur" type="number" value="5" min="1" style="width:70px"></label></div>
+   <div class="row"><label><input type="checkbox" id="auto"> Operar automaticamente</label></div>
+   <div class="mu" style="font-size:12px">Desmarcado = só mostra sinais. Use conta demo primeiro.</div>
+  </div>
+  <div class="card"><h2>Conexão</h2>
+   <div class="row"><label>App ID <input id="appid" value="1089" style="width:100px"></label></div>
+   <div class="mu" style="font-size:12px">Para produção, registre seu app em developers.deriv.com e defina como URL de retorno o endereço onde este arquivo estiver hospedado.</div>
+  </div>
+ </section>
+ <section class="card full" style="grid-column:1/-1"><h2>Sinais e operações</h2><div id="log"></div></section>
+</main>
+<script>
+const $=id=>document.getElementById(id);
+let ws,candles=[],token=null,acctId=null,cur="USD",stats={n:0,w:0,l:0,pl:0},lastSig="";
+const store={get:k=>{try{return sessionStorage.getItem(k)}catch(e){return null}},set:(k,v)=>{try{sessionStorage.setItem(k,v)}catch(e){}},del:k=>{try{sessionStorage.removeItem(k)}catch(e){}}};
+const appId=()=>$("appid").value.trim()||"1089";
+function log(t,c){const d=document.createElement("div");if(c)d.className=c;d.textContent=new Date().toLocaleTimeString()+"  "+t;$("log").prepend(d)}
+
+// ---- Login OAuth (redireciona para a Deriv) ----
+$("login").onclick=()=>{store.set("appid",appId());location.href="https://oauth.deriv.com/oauth2/authorize?app_id="+appId()+"&l=PT"};
+$("logout").onclick=()=>{store.del("tk");store.del("acct");location.href=location.pathname};
+(function(){const p=new URLSearchParams(location.search);
+ if(p.get("token1")){store.set("tk",p.get("token1"));store.set("acct",p.get("acct1")||"");if(store.get("appid"))store.set("appid",store.get("appid"));history.replaceState({},"",location.pathname)}
+ if(store.get("appid"))$("appid").value=store.get("appid");
+ token=store.get("tk");})();
+
+// ---- WebSocket ----
+function send(o){if(ws&&ws.readyState===1)ws.send(JSON.stringify(o))}
+function connect(){
+ ws=new WebSocket("wss://ws.derivws.com/websockets/v3?app_id="+appId());
+ ws.onopen=()=>{if(token)send({authorize:token});subscribeCandles()};
+ ws.onclose=()=>setTimeout(connect,3000);
+ ws.onmessage=e=>handle(JSON.parse(e.data));
+}
+function subscribeCandles(){
+ send({forget_all:"ohlc"});candles=[];
+ send({ticks_history:$("sym").value,adjust_start_time:1,count:300,end:"latest",style:"candles",granularity:+$("gran").value,subscribe:1});
+}
+$("sym").onchange=$("gran").onchange=subscribeCandles;
+
+function handle(m){
+ if(m.error){log("Erro: "+m.error.message,"dn");return}
+ if(m.msg_type==="authorize"){acctId=m.authorize.loginid;cur=m.authorize.currency;
+  const demo=m.authorize.is_virtual;$("acct").textContent=(demo?"DEMO ":"REAL ")+acctId;$("acct").className="badge "+(demo?"demo":"real");
+  $("login").style.display="none";$("logout").style.display="";send({balance:1,subscribe:1});log("Conectado: "+acctId+(demo?" (demo)":" (REAL)"))}
+ else if(m.msg_type==="balance"){$("bal").textContent=m.balance.balance.toFixed(2)+" "+m.balance.currency;$("s1").textContent=m.balance.balance.toFixed(2)}
+ else if(m.msg_type==="candles"){candles=m.candles.map(c=>({t:c.epoch,o:+c.open,h:+c.high,l:+c.low,c:+c.close}));draw();analyse()}
+ else if(m.msg_type==="ohlc"){const o=m.ohlc,t=+o.open_time,c={t,o:+o.open,h:+o.high,l:+o.low,c:+o.close},L=candles[candles.length-1];
+  if(L&&L.t===t)candles[candles.length-1]=c;else{candles.push(c);if(candles.length>400)candles.shift();onNewCandle()}
+  $("price").textContent="Preço: "+c.c;draw()}
+ else if(m.msg_type==="proposal"&&m.echo_req.passthrough){send({buy:m.proposal.id,price:+$("stake").value});}
+ else if(m.msg_type==="buy"){const id=m.buy.contract_id;log("Compra #"+id+" a "+m.buy.buy_price,"up");stats.n++;$("s2").textContent=stats.n;send({proposal_open_contract:1,contract_id:id,subscribe:1})}
+ else if(m.msg_type==="proposal_open_contract"){const c=m.proposal_open_contract;if(c.is_sold){send({forget:m.subscription.id});
+  const p=+c.profit;stats.pl+=p;p>0?stats.w++:stats.l++;$("s3").textContent=stats.w;$("s4").textContent=stats.l;
+  $("s5").textContent=stats.pl.toFixed(2);$("s5").className=stats.pl>=0?"up":"dn";log("Resultado #"+c.contract_id+": "+p.toFixed(2),p>0?"up":"dn")}}
+}
+
+// ---- Indicadores ----
+function sma(n,i){if(i<n-1)return null;let s=0;for(let k=i-n+1;k<=i;k++)s+=candles[k].c;return s/n}
+const bull=c=>c.c>c.o,bear=c=>c.c<c.o;
+function trend(i){const a=sma(20,i),b=sma(99,i),c=sma(200,i);if(!a||!b||!c)return 0;return a>b&&b>c?1:(a<b&&b<c?-1:0)}
+
+// ---- Estratégias (i = última vela FECHADA) ----
+const S={
+ pbe(i){const t=trend(i),p=candles[i-1],c=candles[i],s=sma(20,i-1);if(!t||!s)return null;
+  if(t===1&&p.l<=s&&bear(p)&&bull(c)&&c.c>=p.o&&c.o<=p.c)return"CALL";
+  if(t===-1&&p.h>=s&&bull(p)&&bear(c)&&c.c<=p.o&&c.o>=p.c)return"PUT";return null},
+ brk(i){if(i<21)return null;let hi=-1e12,lo=1e12;for(let k=i-20;k<i;k++){hi=Math.max(hi,candles[k].h);lo=Math.min(lo,candles[k].l)}
+  const c=candles[i];return c.c>hi?"CALL":(c.c<lo?"PUT":null)},
+ pb(i){const t=trend(i),p=candles[i-1],c=candles[i],sp=sma(20,i-1),sc=sma(20,i);if(!t||!sp)return null;
+  if(t===1&&p.c<=sp&&c.c>sc&&bull(c))return"CALL";if(t===-1&&p.c>=sp&&c.c<sc&&bear(c))return"PUT";return null},
+ smc(i){if(i<30)return null;let sh=null,sl=null;
+  for(let k=i-2;k>i-50&&k>2;k--){const x=candles[k];
+   if(sh===null&&x.h>candles[k-1].h&&x.h>candles[k-2].h&&x.h>candles[k+1].h&&x.h>candles[k+2].h)sh=x.h;
+   if(sl===null&&x.l<candles[k-1].l&&x.l<candles[k-2].l&&x.l<candles[k+1].l&&x.l<candles[k+2].l)sl=x.l}
+  const c=candles[i];if(sh&&c.h>sh&&c.c<sh&&bear(c))return"PUT";if(sl&&c.l<sl&&c.c>sl&&bull(c))return"CALL";return null}
+};
+const NAMES={pbe:"Pullback+Engolfo",brk:"Rompimento",pb:"Pullback",smc:"SMC"};
+
+function onNewCandle(){
+ const i=candles.length-2;if(i<3)return;
+ document.querySelectorAll("[data-bot]:checked").forEach(cb=>{
+  const k=cb.dataset.bot,s=S[k](i);if(!s)return;
+  const key=k+candles[i].t;if(key===lastSig)return;lastSig=key;
+  log("SINAL "+NAMES[k]+": "+(s==="CALL"?"COMPRA ▲":"VENDA ▼")+" em "+$("sym").value,s==="CALL"?"up":"dn");
+  if($("auto").checked)trade(s)});
+ analyse();
+}
+function trade(type){
+ if(!token){log("Faça login para operar.","dn");return}
+ send({proposal:1,amount:+$("stake").value,basis:"stake",contract_type:type,currency:cur,duration:+$("dur").value,duration_unit:"m",symbol:$("sym").value,passthrough:{bot:1}});
+}
+function analyse(){
+ const i=candles.length-2;if(i<200){$("ana").textContent="Carregando histórico ("+candles.length+"/200 velas mínimas)…";return}
+ const t=trend(i),c=candles[i],a=sma(20,i),b=sma(99,i),d=sma(200,i);
+ const tx=t===1?'<b class="up">Tendência de alta</b> (20 > 99 > 200)':t===-1?'<b class="dn">Tendência de baixa</b> (20 < 99 < 200)':'<b>Sem tendência clara</b> (médias cruzadas)';
+ $("ana").innerHTML=tx+"<br>Fechamento "+c.c.toFixed(4)+" · SMA20 "+a.toFixed(4)+" · SMA99 "+b.toFixed(4)+" · SMA200 "+d.toFixed(4)+"<br>Preço "+(c.c>a?"acima":"abaixo")+" da SMA20 · distância "+(Math.abs(c.c-a)/a*100).toFixed(3)+"%";
+}
+
+// ---- Gráfico ----
+function draw(){
+ const cv=$("cv"),r=devicePixelRatio||1,W=cv.clientWidth,H=cv.clientHeight;cv.width=W*r;cv.height=H*r;
+ const x=cv.getContext("2d");x.scale(r,r);x.clearRect(0,0,W,H);
+ const N=Math.min(candles.length,Math.floor(W/7)),off=candles.length-N,v=candles.slice(off);if(!v.length)return;
+ let hi=Math.max(...v.map(c=>c.h)),lo=Math.min(...v.map(c=>c.l));const pad=(hi-lo)*.05||1;hi+=pad;lo-=pad;
+ const Y=p=>H-(p-lo)/(hi-lo)*H,w=W/N;
+ v.forEach((c,k)=>{const cx=k*w+w/2,col=c.c>=c.o?"#26a69a":"#ef5350";x.strokeStyle=x.fillStyle=col;
+  x.beginPath();x.moveTo(cx,Y(c.h));x.lineTo(cx,Y(c.l));x.stroke();
+  x.fillRect(cx-w*.35,Math.min(Y(c.o),Y(c.c)),w*.7,Math.max(1,Math.abs(Y(c.o)-Y(c.c))))});
+ [[20,"#f0b429"],[99,"#58a6ff"],[200,"#d2a8ff"]].forEach(([n,col])=>{x.strokeStyle=col;x.lineWidth=1.5;x.beginPath();let s=false;
+  for(let k=0;k<N;k++){const m=sma(n,off+k);if(m===null)continue;const px=k*w+w/2;s?x.lineTo(px,Y(m)):x.moveTo(px,Y(m));s=true}x.stroke();x.lineWidth=1});
+}
+addEventListener("resize",draw);
+connect();
+</script></body></html>
