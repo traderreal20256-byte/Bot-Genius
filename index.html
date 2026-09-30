@@ -206,6 +206,12 @@ setInterval(()=>{sendPub({ping:1});sendAcc({ping:1})},15000);
 const UNI=[["frxEURUSD","EUR/USD","fx"],["frxGBPUSD","GBP/USD","fx"],["frxUSDJPY","USD/JPY","fx"],["frxAUDUSD","AUD/USD","fx"],["frxUSDCAD","USD/CAD","fx"],["frxUSDCHF","USD/CHF","fx"],["frxNZDUSD","NZD/USD","fx"],["frxEURJPY","EUR/JPY","fx"],["frxGBPJPY","GBP/JPY","fx"],["frxEURGBP","EUR/GBP","fx"],["frxAUDJPY","AUD/JPY","fx"],["frxEURAUD","EUR/AUD","fx"],
  ["frxXAUUSD","Ouro XAU/USD","xau"],["OTC_SPC","US 500","us"],["OTC_NDX","US Tech 100","us"],["OTC_DJI","Wall Street 30","us"],
  ["R_100","Volatility 100","syn"],["R_75","Volatility 75","syn"],["R_50","Volatility 50","syn"],["R_25","Volatility 25","syn"],["R_10","Volatility 10","syn"]];
+let hq=[],pumpOn=false,qDelay=1000,qPause=0,rlLogged=false;
+function qsend(m){hq.push(m);if(!pumpOn){pumpOn=true;setTimeout(pump,0)}}
+function pump(){if(!hq.length){pumpOn=false;return}const w=qPause-Date.now();if(w>0){setTimeout(pump,w);return}sendPub(hq.shift());setTimeout(pump,qDelay)}
+function rlRetry(e){const r=reqMap[e.req_id];if(!r||r.sym!==e.ticks_history)return;hq.unshift(e);qPause=Date.now()+8000;qDelay=Math.min(qDelay+400,3000);
+ if(!rlLogged){rlLogged=true;log("A Deriv limitou as requisições de histórico. Reduzindo o ritmo e tentando de novo…","mu")}
+ if(!pumpOn){pumpOn=true;setTimeout(pump,0)}}
 let M={},reqMap={},subGen=0,started=false,cand=[],candTimer=null;const sigSeen=new Set(),WGT={smcf:3,pbe:2,brk:1,pb:1,smc:1};
 const symName=id=>(UNI.find(u=>u[0]===id)||[0,id])[1];
 function connectPub(){pub=new WebSocket("wss://api.derivws.com/trading/v1/options/ws/public");
@@ -225,14 +231,13 @@ function buildSymSelect(){const sel=$("sym"),cur=sel.value;sel.innerHTML="";
  if([...sel.options].some(o=>o.value===cur))sel.value=cur}
 function bind(){const d=M[$("sym").value];if(d){candles=d.c;htf=d.h;htfG=d.g}else{candles=[];htf=[]}}
 function subscribeAll(){
- const gen=++subGen;sendPub({forget_all:"candles"});M={};reqMap={};
+ const gen=++subGen;sendPub({forget_all:"candles"});hq.length=0;qDelay=1000;rlLogged=false;M={};reqMap={};
  const gr=+$("gran").value,hg=HMAP[gr]||14400,set=[$("sym").value];
  if($("scan").checked)UNI.forEach(u=>{if(u[3]!==false&&$("g_"+u[2])&&$("g_"+u[2]).checked&&!set.includes(u[0]))set.push(u[0])});
  set.forEach((sy,n)=>{M[sy]={c:[],h:[],g:hg,older:false,n};
   reqMap[1000+n*3]={sym:sy,kind:"main"};reqMap[1001+n*3]={sym:sy,kind:"htf"};reqMap[1002+n*3]={sym:sy,kind:"older"};
-  setTimeout(()=>{if(gen!==subGen)return;
-   sendPub({ticks_history:sy,adjust_start_time:1,count:1000,end:"latest",style:"candles",granularity:gr,subscribe:1,req_id:1000+n*3});
-   sendPub({ticks_history:sy,adjust_start_time:1,count:400,end:"latest",style:"candles",granularity:hg,subscribe:1,req_id:1001+n*3})},n*150)});
+  qsend({ticks_history:sy,adjust_start_time:1,count:600,end:"latest",style:"candles",granularity:gr,subscribe:1,req_id:1000+n*3});
+  qsend({ticks_history:sy,adjust_start_time:1,count:250,end:"latest",style:"candles",granularity:hg,subscribe:1,req_id:1001+n*3})});
  htfG=hg;bind();renderMkt();
 }
 function resolve(m){const r=m.req_id!=null?m.req_id:(m.echo_req&&m.echo_req.req_id);if(r!=null&&reqMap[r])return reqMap[r];
@@ -245,7 +250,8 @@ function renderMkt(){const el=$("mktlist");if(!el)return;const gn={fx:"Forex",xa
   return'<div style="display:flex;justify-content:space-between;gap:8px;padding:6px 0;border-bottom:1px solid #1f1f1f"><span style="color:#fff">'+u[1]+' <span class="mu">· '+gn[u[2]]+'</span></span><span>'+st+' · '+(on?on.c.length+" velas":"não monitorado")+'</span></div>'}).join("")}
 
 function handle(m){
- if((m.msg_type==="ping"&&!m.error)||m.msg_type==="forget_all")return;if(m.error){if(m.echo_req&&(m.echo_req.proposal||m.echo_req.buy))busy=false;log("Erro: "+m.error.message,"dn");return}
+ if((m.msg_type==="ping"&&!m.error)||m.msg_type==="forget_all")return;if(m.error&&/rate limit/i.test(m.error.message||"")&&m.echo_req&&m.echo_req.ticks_history){rlRetry(m.echo_req);return}
+ if(m.error){if(m.echo_req&&(m.echo_req.proposal||m.echo_req.buy))busy=false;log("Erro: "+m.error.message,"dn");return}
  if(m.msg_type==="authorize"){acctId=m.authorize.loginid;cur=m.authorize.currency;
   const demo=m.authorize.is_virtual;$("acct").textContent=(demo?"DEMO ":"REAL ")+acctId;$("acct").className="badge "+(demo?"demo":"real");
   $("login").style.display="none";$("logout").style.display="";sendAcc({balance:1,subscribe:1});log("Conectado: "+acctId+(demo?" (demo)":" (REAL)"))}
@@ -254,7 +260,7 @@ function handle(m){
  else if(m.msg_type==="candles"){const arr=m.candles.map(c=>({t:c.epoch,o:+c.open,h:+c.high,l:+c.low,c:+c.close})),r=resolve(m);if(!r)return;const d=M[r.sym];if(!d)return;
   if(r.kind==="htf")d.h=arr;
   else if(r.kind==="older"){if(d.c.length)d.c=arr.filter(c=>c.t<d.c[0].t).concat(d.c)}
-  else{d.c=arr;if(arr.length&&arr.length<230&&!d.older){d.older=true;sendPub({ticks_history:r.sym,count:500,end:arr[0].t-1,style:"candles",granularity:+$("gran").value,req_id:1002+d.n*3})}}
+  else{d.c=arr;if(arr.length&&arr.length<230&&!d.older){d.older=true;qsend({ticks_history:r.sym,count:500,end:arr[0].t-1,style:"candles",granularity:+$("gran").value,req_id:1002+d.n*3})}}
   if(r.sym===$("sym").value){bind();draw();analyse()}}
  else if(m.msg_type==="ohlc"){const o=m.ohlc,t=+o.open_time,r=resolve(m);if(!r)return;const d=M[r.sym];if(!d)return;
   const c={t,o:+o.open,h:+o.high,l:+o.low,c:+o.close};
