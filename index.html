@@ -101,6 +101,7 @@ canvas{width:100%;height:340px;display:block;background:#000;border-radius:6px}
    <div class="bot"><div>Premium / Desconto<small>Compra só na metade inferior (desconto) e vende só na superior (premium) da faixa das últimas 80 velas</small></div><input type="checkbox" id="f_pd" checked></div>
    <div class="bot"><div>Alinhamento multi-timeframe<small>Só opera se a estrutura do tempo gráfico maior (M1→M15, M5→H1, M15→H4, H1→D1) apontar na mesma direção</small></div><input type="checkbox" id="f_htf" checked></div>
    <div class="bot"><div>Varredura de liquidez de sessão<small>Exige que o preço tenha varrido a máxima ou mínima das sessões Ásia, Londres ou Nova York (horário UTC) nas últimas 20 velas e voltado</small></div><input type="checkbox" id="f_sess"></div>
+   <div class="bot"><div>Aceitar retornos repetidos à zona<small>Ligado: a zona vale até o preço fechar além dela (não só no primeiro toque). Desligado: só o primeiro retorno pode gerar entrada.</small></div><input type="checkbox" id="f_re" checked></div>
  </div></section>
 
  <section class="page" id="p-mkt"><div class="card"><h2>Varredura de mercados</h2>
@@ -212,11 +213,12 @@ function pump(){if(!hq.length){pumpOn=false;return}const w=qPause-Date.now();if(
 function rlRetry(e){const r=reqMap[e.req_id];if(!r||r.sym!==e.ticks_history)return;hq.unshift(e);qPause=Date.now()+8000;qDelay=Math.min(qDelay+400,3000);
  if(!rlLogged){rlLogged=true;log("A Deriv limitou as requisições de histórico. Reduzindo o ritmo e tentando de novo…","mu")}
  if(!pumpOn){pumpOn=true;setTimeout(pump,0)}}
-let M={},reqMap={},subGen=0,started=false,cand=[],candTimer=null;const sigSeen=new Set(),WGT={smcf:3,pbe:2,brk:1,pb:1,smc:1};
+let symsLoaded=false,M={},reqMap={},subGen=0,started=false,cand=[],candTimer=null;const sigSeen=new Set(),WGT={smcf:3,pbe:2,brk:1,pb:1,smc:1};
 const symName=id=>(UNI.find(u=>u[0]===id)||[0,id])[1];
 function connectPub(){pub=new WebSocket("wss://api.derivws.com/trading/v1/options/ws/public");
- pub.onopen=requestSymbols;pub.onclose=()=>{started=false;setTimeout(connectPub,3000)};pub.onmessage=e=>handle(JSON.parse(e.data))}
-function requestSymbols(){started=false;sendPub({active_symbols:"brief",contract_type:["CALL","PUT"],req_id:9});setTimeout(()=>{if(!started)startScan()},2500)}
+ pub.onopen=requestSymbols;pub.onclose=()=>{started=false;log("Conexão de mercado caiu. Reconectando…","mu");setTimeout(connectPub,3000)};pub.onmessage=e=>handle(JSON.parse(e.data))}
+function mergeC(a,b){const m=new Map();a.forEach(c=>m.set(c.t,c));b.forEach(c=>m.set(c.t,c));return[...m.values()].sort((x,y)=>x.t-y.t)}
+function requestSymbols(){started=false;if(symsLoaded){startScan();return}sendPub({active_symbols:"brief",contract_type:["CALL","PUT"],req_id:9});setTimeout(()=>{if(!started)startScan()},2500)}
 function reconcile(list){
  const ids={};list.forEach(a=>{const id=a.underlying_symbol||a.symbol;if(id)ids[id]=a});
  if(!Object.keys(ids).length)return;
@@ -230,14 +232,17 @@ function buildSymSelect(){const sel=$("sym"),cur=sel.value;sel.innerHTML="";
  UNI.filter(u=>u[3]!==false).forEach(u=>{const o=document.createElement("option");o.value=u[0];o.textContent=u[1];sel.appendChild(o)});
  if([...sel.options].some(o=>o.value===cur))sel.value=cur}
 function bind(){const d=M[$("sym").value];if(d){candles=d.c;htf=d.h;htfG=d.g}else{candles=[];htf=[]}}
+const uidx=sy=>{const q=UNI.findIndex(u=>u[0]===sy);return q<0?UNI.length+10:q};
 function subscribeAll(){
- const gen=++subGen;sendPub({forget_all:"candles"});hq.length=0;qDelay=1000;rlLogged=false;M={};reqMap={};
- const gr=+$("gran").value,hg=HMAP[gr]||14400,set=[$("sym").value];
- if($("scan").checked)UNI.forEach(u=>{if(u[3]!==false&&$("g_"+u[2])&&$("g_"+u[2]).checked&&!set.includes(u[0]))set.push(u[0])});
- set.forEach((sy,n)=>{M[sy]={c:[],h:[],g:hg,older:false,n};
+ const gen=++subGen;sendPub({forget_all:"candles"});hq.length=0;qDelay=1000;rlLogged=false;const old=M;M={};reqMap={};
+ const gr=+$("gran").value,hg=HMAP[gr]||14400,cur=$("sym").value,elig=[],reqs=[];
+ if($("scan").checked)UNI.forEach(u=>{if(u[3]!==false&&$("g_"+u[2])&&$("g_"+u[2]).checked)elig.push(u[0])});else elig.push(cur);
+ const set=[cur];elig.forEach(x=>{if(!set.includes(x))set.push(x)});
+ set.forEach(sy=>{const n=uidx(sy),o=old[sy],keep=!!(o&&o.gr===gr&&o.c.length&&(Date.now()/1000-o.c[o.c.length-1].t)<gr*90);M[sy]={c:keep?o.c:[],h:keep?o.h:[],g:hg,gr,older:keep,n,tr:elig.includes(sy)};
   reqMap[1000+n*3]={sym:sy,kind:"main"};reqMap[1001+n*3]={sym:sy,kind:"htf"};reqMap[1002+n*3]={sym:sy,kind:"older"};
-  qsend({ticks_history:sy,adjust_start_time:1,count:600,end:"latest",style:"candles",granularity:gr,subscribe:1,req_id:1000+n*3});
-  qsend({ticks_history:sy,adjust_start_time:1,count:250,end:"latest",style:"candles",granularity:hg,subscribe:1,req_id:1001+n*3})});
+  reqs.push({ticks_history:sy,adjust_start_time:1,count:keep?120:600,end:"latest",style:"candles",granularity:gr,subscribe:1,req_id:1000+n*3},
+   {ticks_history:sy,adjust_start_time:1,count:keep?60:250,end:"latest",style:"candles",granularity:hg,subscribe:1,req_id:1001+n*3})});
+ setTimeout(()=>{if(gen===subGen)reqs.forEach(qsend)},900);
  htfG=hg;bind();renderMkt();
 }
 function resolve(m){const r=m.req_id!=null?m.req_id:(m.echo_req&&m.echo_req.req_id);if(r!=null&&reqMap[r])return reqMap[r];
@@ -250,17 +255,19 @@ function renderMkt(){const el=$("mktlist");if(!el)return;const gn={fx:"Forex",xa
   return'<div style="display:flex;justify-content:space-between;gap:8px;padding:6px 0;border-bottom:1px solid #1f1f1f"><span style="color:#fff">'+u[1]+' <span class="mu">· '+gn[u[2]]+'</span></span><span>'+st+' · '+(on?on.c.length+" velas":"não monitorado")+'</span></div>'}).join("")}
 
 function handle(m){
- if((m.msg_type==="ping"&&!m.error)||m.msg_type==="forget_all")return;if(m.error&&/rate limit/i.test(m.error.message||"")&&m.echo_req&&m.echo_req.ticks_history){rlRetry(m.echo_req);return}
+ if((m.msg_type==="ping"&&!m.error)||m.msg_type==="forget_all")return;if(m.error&&m.echo_req&&m.echo_req.active_symbols)return;
+ if(m.error&&/already subscribed/i.test(m.error.message||"")&&m.echo_req&&m.echo_req.ticks_history){const e=Object.assign({},m.echo_req);delete e.subscribe;qsend(e);return}
+ if(m.error&&/rate limit/i.test(m.error.message||"")&&m.echo_req&&m.echo_req.ticks_history){rlRetry(m.echo_req);return}
  if(m.error){if(m.echo_req&&(m.echo_req.proposal||m.echo_req.buy))busy=false;log("Erro: "+m.error.message,"dn");return}
  if(m.msg_type==="authorize"){acctId=m.authorize.loginid;cur=m.authorize.currency;
   const demo=m.authorize.is_virtual;$("acct").textContent=(demo?"DEMO ":"REAL ")+acctId;$("acct").className="badge "+(demo?"demo":"real");
   $("login").style.display="none";$("logout").style.display="";sendAcc({balance:1,subscribe:1});log("Conectado: "+acctId+(demo?" (demo)":" (REAL)"))}
  else if(m.msg_type==="balance"){cur=m.balance.currency;$("bal").textContent=m.balance.balance.toFixed(2)+" "+m.balance.currency;$("s1b").textContent=m.balance.balance.toFixed(2)}
- else if(m.msg_type==="active_symbols"){reconcile(m.active_symbols||[]);startScan()}
+ else if(m.msg_type==="active_symbols"){reconcile(m.active_symbols||[]);symsLoaded=true;if(!started)startScan();else{buildSymSelect();renderMkt()}}
  else if(m.msg_type==="candles"){const arr=m.candles.map(c=>({t:c.epoch,o:+c.open,h:+c.high,l:+c.low,c:+c.close})),r=resolve(m);if(!r)return;const d=M[r.sym];if(!d)return;
-  if(r.kind==="htf")d.h=arr;
+  if(r.kind==="htf")d.h=d.h.length?mergeC(d.h,arr):arr;
   else if(r.kind==="older"){if(d.c.length)d.c=arr.filter(c=>c.t<d.c[0].t).concat(d.c)}
-  else{d.c=arr;if(arr.length&&arr.length<230&&!d.older){d.older=true;qsend({ticks_history:r.sym,count:500,end:arr[0].t-1,style:"candles",granularity:+$("gran").value,req_id:1002+d.n*3})}}
+  else{d.c=d.c.length?mergeC(d.c,arr):arr;if(arr.length&&d.c.length<230&&!d.older){d.older=true;qsend({ticks_history:r.sym,count:500,end:d.c[0].t-1,style:"candles",granularity:+$("gran").value,req_id:1002+d.n*3})}}
   if(r.sym===$("sym").value){bind();draw();analyse()}}
  else if(m.msg_type==="ohlc"){const o=m.ohlc,t=+o.open_time,r=resolve(m);if(!r)return;const d=M[r.sym];if(!d)return;
   const c={t,o:+o.open,h:+o.high,l:+o.low,c:+o.close};
@@ -298,7 +305,7 @@ const S={
   const c=candles[i];if(sh&&c.h>sh&&c.c<sh&&bear(c))return"PUT";if(sl&&c.l<sl&&c.c>sl&&bull(c))return"CALL";return null}
 };
 const NAMES={pbe:"Pullback+Engolfo",brk:"Rompimento",pb:"Pullback",smc:"SMC simples",smcf:"SMC completo"};
-let smcEv=null,lastWhy="",htf=[],htfG=900,sweepName="";
+let smcBlock="",smcEv=null,lastWhy="",htf=[],htfG=900,sweepName="";
 const HMAP={60:900,300:3600,900:14400,3600:86400};
 const g2n=g=>({60:"M1",300:"M5",900:"M15",3600:"H1",14400:"H4",86400:"D1"}[g]||g+"s");
 function mkEv(A,d,j,type,from){
@@ -346,19 +353,19 @@ function sweep(i){const L=sessLevels(i);let r=0;sweepName="";
    if(c.l<z.l&&c.c>z.l){r=1;sweepName=z.n+" mín"}}}
  return r}
 S.smcf=i=>{
- if(i<40)return null;const ev=smcScan(i);if(!ev||i-ev.j<1||i-ev.j>40)return null;
+ smcBlock="";if(i<40)return null;const ev=smcScan(i);if(!ev||i-ev.j<1||i-ev.j>40)return null;
  const c=candles[i],zs=[[ev.ob,"OB"]];if(ev.fvg)zs.push([ev.fvg,"FVG"]);let hit=null;
  for(const[z,n]of zs){
-  let used=false;for(let q=ev.j+1;q<i;q++){if(ev.d===1?candles[q].l<=z.hi:candles[q].h>=z.lo){used=true;break}}
+  let used=false;const re=$("f_re").checked;for(let q=ev.j+1;q<i;q++){const x=candles[q];if(re?(ev.d===1?x.c<z.lo:x.c>z.hi):(ev.d===1?x.l<=z.hi:x.h>=z.lo)){used=true;break}}
   if(used)continue;
   if(ev.d===1&&c.l<=z.hi&&c.c>z.lo&&bull(c)){hit=n;break}
   if(ev.d===-1&&c.h>=z.lo&&c.c<z.hi&&bear(c)){hit=n;break}
  }
  if(!hit)return null;
  const ex=[];
- if($("f_pd").checked){const r=pdRange(i);if(ev.d===1?c.c>=r.eq:c.c<=r.eq)return null;ex.push(ev.d===1?"Desconto":"Premium")}
- if($("f_htf").checked){const h=htfDir();if(h!==0&&h!==ev.d)return null;ex.push(g2n(htfG)+(h===0?" n/d":h===1?" ▲":" ▼"))}
- if($("f_sess").checked){if(sweep(i)!==ev.d)return null;ex.push("Varredura "+sweepName)}
+ if($("f_pd").checked){const r=pdRange(i);if(ev.d===1?c.c>=r.eq:c.c<=r.eq){smcBlock="preço em "+(ev.d===1?"Premium (a compra exige Desconto)":"Desconto (a venda exige Premium)");return null}ex.push(ev.d===1?"Desconto":"Premium")}
+ if($("f_htf").checked){const h=htfDir();if(h!==0&&h!==ev.d){smcBlock="o tempo maior ("+g2n(htfG)+") aponta "+(h===1?"alta":"baixa")+", contra o sinal";return null}ex.push(g2n(htfG)+(h===0?" n/d":h===1?" ▲":" ▼"))}
+ if($("f_sess").checked){if(sweep(i)!==ev.d){smcBlock="sem varredura de liquidez de sessão a favor";return null}ex.push("Varredura "+sweepName)}
  lastWhy=ev.type+(ev.d===1?" ▲":" ▼")+" + "+hit+(ex.length?" · "+ex.join(" · "):"");
  return ev.d===1?"CALL":"PUT";
 };
@@ -369,12 +376,13 @@ function smcTxt(){const e=smcEv;if(!e)return"<br>SMC: sem estrutura recente";
 
 function onNewCandle(){analyse()}
 function scanOn(sym){
- const d=M[sym];if(!d||d.c.length<30)return;
+ const d=M[sym];if(!d||!d.tr||d.c.length<30)return;
  const sc=candles,sh=htf,sg=htfG;candles=d.c;htf=d.h;htfG=d.g;
  try{
   const i=candles.length-2;
   document.querySelectorAll("[data-bot]:checked").forEach(cb=>{
    const k=cb.dataset.bot;let sg2=null;try{sg2=S[k](i)}catch(e){}
+   if(!sg2&&k==="smcf"&&smcBlock){const bk=sym+"b"+candles[i].t;if(!sigSeen.has(bk)){sigSeen.add(bk);log("SMC completo em "+symName(sym)+": zona tocada, mas bloqueada — "+smcBlock,"mu")}}
    if(!sg2)return;const key=sym+k+candles[i].t;if(sigSeen.has(key))return;sigSeen.add(key);
    log("SINAL "+NAMES[k]+": "+(sg2==="CALL"?"COMPRA ▲":"VENDA ▼")+" em "+symName(sym)+(k==="smcf"?" ["+lastWhy+"]":""),sg2==="CALL"?"up":"dn");
    const tr=trend(i);cand.push({sym,name:symName(sym),dir:sg2,k,score:WGT[k]+((tr===1&&sg2==="CALL")||(tr===-1&&sg2==="PUT")?1:0),why:k==="smcf"?lastWhy:""});
