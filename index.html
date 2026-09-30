@@ -96,6 +96,8 @@ canvas{width:100%;height:340px;display:block;background:#000;border-radius:6px}
    <div class="bot"><div>Pullback<small>Tendência pelas médias, retorno e retomada da SMA20</small></div><input type="checkbox" data-bot="pb"></div>
    <div class="bot"><div>SMC simplificado<small>Varredura de liquidez em topo/fundo de swing com rejeição</small></div><input type="checkbox" data-bot="smc"></div>
    <div class="bot"><div>SMC completo<small>Quebra de estrutura (CHoCH/BOS) + Order Block + FVG: entra no primeiro retorno à zona, com vela de confirmação. As zonas aparecem no gráfico.</small></div><input type="checkbox" data-bot="smcf" checked></div>
+   <div class="bot"><div>Suporte e resistência (retração)<small>Entra NO TOQUE, no 3º toque de um nível onde o preço já reagiu 2 vezes: compra no suporte (só em tendência de alta) e vende na resistência (só em tendência de baixa). Tendência = médias 20/99/200 alinhadas. Os níveis aparecem no gráfico.</small></div><input type="checkbox" data-bot="sr"></div>
+   <div class="bot"><div>Fibonacci 0,618<small>Acha o último impulso, traça a retração e entra NO PRIMEIRO TOQUE da região de 61,8%, sempre a favor da tendência (médias 20/99/200 alinhadas). Invalida se passar de 78,6%. As linhas aparecem no gráfico.</small></div><input type="checkbox" data-bot="fib"></div>
  </div>
  <div class="card"><h2>Filtros do SMC completo</h2>
    <div class="bot"><div>Premium / Desconto<small>Compra só na metade inferior (desconto) e vende só na superior (premium) da faixa das últimas 80 velas</small></div><input type="checkbox" id="f_pd" checked></div>
@@ -213,7 +215,7 @@ function pump(){if(!hq.length){pumpOn=false;return}const w=qPause-Date.now();if(
 function rlRetry(e){const r=reqMap[e.req_id];if(!r||r.sym!==e.ticks_history)return;hq.unshift(e);qPause=Date.now()+8000;qDelay=Math.min(qDelay+400,3000);
  if(!rlLogged){rlLogged=true;log("A Deriv limitou as requisições de histórico. Reduzindo o ritmo e tentando de novo…","mu")}
  if(!pumpOn){pumpOn=true;setTimeout(pump,0)}}
-let symsLoaded=false,M={},reqMap={},subGen=0,started=false,cand=[],candTimer=null;const sigSeen=new Set(),WGT={smcf:3,pbe:2,brk:1,pb:1,smc:1};
+let symsLoaded=false,M={},reqMap={},subGen=0,started=false,cand=[],candTimer=null;const sigSeen=new Set(),WGT={smcf:3,pbe:2,brk:1,pb:1,smc:1,sr:2,fib:2};
 const symName=id=>(UNI.find(u=>u[0]===id)||[0,id])[1];
 function connectPub(){pub=new WebSocket("wss://api.derivws.com/trading/v1/options/ws/public");
  pub.onopen=requestSymbols;pub.onclose=()=>{started=false;log("Conexão de mercado caiu. Reconectando…","mu");setTimeout(connectPub,3000)};pub.onmessage=e=>handle(JSON.parse(e.data))}
@@ -276,6 +278,7 @@ function handle(m){
   const L=d.c[d.c.length-1];
   if(L&&L.t===t)d.c[d.c.length-1]=c;
   else if(!L||t>L.t){d.c.push(c);if(d.c.length>1200)d.c.shift();if(botOn&&d.c.length>30)scanOn(r.sym);if(r.sym===$("sym").value)analyse()}
+  if(botOn&&d.c.length>80)liveOn(r.sym);
   if(r.sym===$("sym").value){$("price").textContent="Preço: "+c.c;draw()}}
  else if(m.msg_type==="proposal"&&m.echo_req.passthrough){sendAcc({buy:m.proposal.id,price:curStake});}
  else if(m.msg_type==="buy"){const id=m.buy.contract_id;openIds.add(id);{const n0=Math.floor(Date.now()/1000),lc=(M[pend&&pend.sym]||{c:candles}).c.slice(-1)[0];if(pend)trades.push({id,type:pend.type,sym:pend.sym,stake:curStake,t0:n0,exp:n0+(pend.mult?(pend.mtime>0?pend.mtime*60:86400):pend.dur*60),noexp:pend.mult&&!(pend.mtime>0),mult:pend.mult?pend.m:0,px:lc?lc.c:0});if(trades.length>15)trades.shift()}if(pend&&pend.mult&&pend.mtime>0)setTimeout(()=>{if(openIds.has(id))sendAcc({sell:id,price:0})},pend.mtime*60000);log("Compra #"+id+" a "+m.buy.buy_price,"up");stats.n++;$("s2").textContent=stats.n;sendAcc({proposal_open_contract:1,contract_id:id,subscribe:1})}
@@ -304,8 +307,8 @@ const S={
    if(sl===null&&x.l<candles[k-1].l&&x.l<candles[k-2].l&&x.l<candles[k+1].l&&x.l<candles[k+2].l)sl=x.l}
   const c=candles[i];if(sh&&c.h>sh&&c.c<sh&&bear(c))return"PUT";if(sl&&c.l<sl&&c.c>sl&&bull(c))return"CALL";return null}
 };
-const NAMES={pbe:"Pullback+Engolfo",brk:"Rompimento",pb:"Pullback",smc:"SMC simples",smcf:"SMC completo"};
-let smcBlock="",smcEv=null,lastWhy="",htf=[],htfG=900,sweepName="";
+const NAMES={pbe:"Pullback+Engolfo",brk:"Rompimento",pb:"Pullback",smc:"SMC simples",smcf:"SMC completo",sr:"S/R retração",fib:"Fibonacci 0,618"};
+let srLv=[],fibG=null,smcBlock="",smcEv=null,lastWhy="",htf=[],htfG=900,sweepName="";
 const HMAP={60:900,300:3600,900:14400,3600:86400};
 const g2n=g=>({60:"M1",300:"M5",900:"M15",3600:"H1",14400:"H4",86400:"D1"}[g]||g+"s");
 function mkEv(A,d,j,type,from){
@@ -369,6 +372,60 @@ S.smcf=i=>{
  lastWhy=ev.type+(ev.d===1?" ▲":" ▼")+" + "+hit+(ex.length?" · "+ex.join(" · "):"");
  return ev.d===1?"CALL":"PUT";
 };
+const onBot=k=>{const e=document.querySelector('[data-bot="'+k+'"]');return !!(e&&e.checked)};
+function atr(i,n){n=n||14;let t=0,c=0;for(let q=Math.max(1,i-n+1);q<=i;q++){const a=candles[q],p=candles[q-1];t+=Math.max(a.h-a.l,Math.abs(a.h-p.c),Math.abs(a.l-p.c));c++}return c?t/c:0}
+function pivots(i,k,look){const H=[],L=[];for(let q=Math.max(k,i-look);q<=i-k;q++){const x=candles[q];let h=true,l=true;
+  for(let m=1;m<=k;m++){if(!(x.h>candles[q-m].h&&x.h>candles[q+m].h))h=false;if(!(x.l<candles[q-m].l&&x.l<candles[q+m].l))l=false}
+  if(h)H.push({i:q,p:x.h});if(l)L.push({i:q,p:x.l})}return{H,L}}
+// Suporte e resistência: níveis onde houve 2+ pivôs próximos
+function srLevels(i){const a=atr(i);if(!a)return[];const pv=pivots(i,3,200),pts=pv.H.concat(pv.L).map(z=>z.p).sort((x,y)=>x-y),gs=[];
+ pts.forEach(p=>{const g=gs[gs.length-1];if(g&&Math.abs(p-g.sum/g.n)<=a*0.5){g.sum+=p;g.n++}else gs.push({sum:p,n:1})});
+ return gs.filter(g=>g.n>=2).map(g=>({p:g.sum/g.n,n:g.n,tol:a*0.25}))}
+S.sr=i=>{if(i<60)return null;const c=candles[i],p=candles[i-1],a=atr(i);if(!a)return null;
+ for(const L of srLevels(i)){
+  if(c.l<=L.p+L.tol&&c.l>=L.p-2*a&&c.c>L.p&&c.c>c.o&&p.c>L.p-L.tol){lastWhy="Suporte "+L.p.toFixed(4)+" ("+L.n+" toques)";return"CALL"}
+  if(c.h>=L.p-L.tol&&c.h<=L.p+2*a&&c.c<L.p&&c.c<c.o&&p.c<L.p+L.tol){lastWhy="Resistência "+L.p.toFixed(4)+" ("+L.n+" toques)";return"PUT"}
+ }return null};
+// Fibonacci 0,618 sobre o último impulso
+function fibLeg(i){const a=atr(i);if(!a)return null;const pv=pivots(i,3,160),all=pv.H.map(z=>({i:z.i,p:z.p,t:"H"})).concat(pv.L.map(z=>({i:z.i,p:z.p,t:"L"}))).sort((x,y)=>x.i-y.i);
+ for(let k=all.length-1;k>=1;k--){const p1=all[k];let p0=null;for(let q=k-1;q>=0;q--){if(all[q].t!==p1.t){p0=all[q];break}}
+  if(!p0)continue;const up=p1.t==="H",R=Math.abs(p1.p-p0.p);if(R<2*a)continue;
+  let ok=true;for(let q=p1.i+1;q<=i;q++){const x=candles[q];if(up?(x.h>p1.p||x.c<p0.p):(x.l<p1.p||x.c>p0.p)){ok=false;break}}
+  if(ok)return{up,p0,p1,R,a}}
+ return null}
+S.fib=i=>{if(i<60)return null;const g=fibLeg(i);if(!g)return null;const c=candles[i],f=g.up?g.p1.p-0.618*g.R:g.p1.p+0.618*g.R,band=0.04*g.R,deep=g.up?g.p1.p-0.786*g.R:g.p1.p+0.786*g.R;
+ if(g.up&&c.l<=f+band&&c.c>f-band&&c.c>c.o&&c.l>deep-band){lastWhy="Fib 0,618 ▲ ("+f.toFixed(4)+")";return"CALL"}
+ if(!g.up&&c.h>=f-band&&c.c<f+band&&c.c<c.o&&c.h<deep+band){lastWhy="Fib 0,618 ▼ ("+f.toFixed(4)+")";return"PUT"}
+ return null};
+
+// Entradas NO TOQUE (vela em formação), sempre a favor da tendência (médias 20/99/200 alinhadas)
+function liveTouch(kind){
+ const n=candles.length,i=n-2,cur=candles[n-1];if(i<60)return null;const tr=trend(i);if(!tr)return null;
+ if(kind==="sr"){const a=atr(i);if(!a)return null;
+  for(const L of srLevels(i)){if(L.n!==2)continue;
+   let fresh=true;for(let q=i-2;q<=i;q++){const x=candles[q];if(tr===1?x.l<=L.p+L.tol:x.h>=L.p-L.tol){fresh=false;break}}
+   if(!fresh)continue;
+   if(tr===1&&cur.l<=L.p+L.tol&&cur.l>=L.p-2*a&&candles[i].c>L.p){lastWhy="Suporte "+L.p.toFixed(4)+" · 3º toque · a favor da alta";return{dir:"CALL",key:"sr"+L.p.toFixed(5)}}
+   if(tr===-1&&cur.h>=L.p-L.tol&&cur.h<=L.p+2*a&&candles[i].c<L.p){lastWhy="Resistência "+L.p.toFixed(4)+" · 3º toque · a favor da baixa";return{dir:"PUT",key:"sr"+L.p.toFixed(5)}}
+  }return null}
+ if(kind==="fib"){const g=fibLeg(i);if(!g)return null;if(g.up?tr!==1:tr!==-1)return null;
+  const f=g.up?g.p1.p-0.618*g.R:g.p1.p+0.618*g.R,band=0.04*g.R,deep=g.up?g.p1.p-0.786*g.R:g.p1.p+0.786*g.R;
+  if(g.up?cur.h>g.p1.p:cur.l<g.p1.p)return null;
+  for(let q=g.p1.i+1;q<=i;q++){const x=candles[q];if(g.up?x.l<=f+band:x.h>=f-band)return null}
+  if(g.up&&cur.l<=f+band&&cur.l>deep-band){lastWhy="Fib 0,618 ▲ ("+f.toFixed(4)+") · 1º toque · a favor da alta";return{dir:"CALL",key:"fib"+g.p1.i}}
+  if(!g.up&&cur.h>=f-band&&cur.h<deep+band){lastWhy="Fib 0,618 ▼ ("+f.toFixed(4)+") · 1º toque · a favor da baixa";return{dir:"PUT",key:"fib"+g.p1.i}}
+  return null}
+ return null}
+function liveOn(sym){
+ const d=M[sym];if(!d||!d.tr||d.c.length<80)return;const now=Date.now();if(d.lv&&now-d.lv<1000)return;d.lv=now;
+ const want=["sr","fib"].filter(onBot);if(!want.length)return;
+ const sc=candles,sh=htf,sg=htfG;candles=d.c;htf=d.h;htfG=d.g;
+ try{want.forEach(k=>{let r=null;try{r=liveTouch(k)}catch(e){}if(!r)return;
+  const key=sym+r.key+candles[candles.length-1].t;if(sigSeen.has(key))return;sigSeen.add(key);
+  log("SINAL "+NAMES[k]+": "+(r.dir==="CALL"?"COMPRA ▲":"VENDA ▼")+" em "+symName(sym)+" ["+lastWhy+"]",r.dir==="CALL"?"up":"dn");
+  cand.push({sym,name:symName(sym),dir:r.dir,k,score:WGT[k]+1,why:lastWhy})})}
+ finally{candles=sc;htf=sh;htfG=sg}
+ if(cand.length&&!candTimer)candTimer=setTimeout(pickBest,700)}
 function smcTxt(){const e=smcEv;if(!e)return"<br>SMC: sem estrutura recente";
  const i=candles.length-2,r=pdRange(i),h=htfDir();
  return"<br>SMC: "+e.type+(e.d===1?" ▲":" ▼")+" há "+(i-e.j)+" velas · OB "+e.ob.lo.toFixed(4)+"–"+e.ob.hi.toFixed(4)+(e.fvg?" · FVG "+e.fvg.lo.toFixed(4)+"–"+e.fvg.hi.toFixed(4):"")
@@ -381,10 +438,10 @@ function scanOn(sym){
  try{
   const i=candles.length-2;
   document.querySelectorAll("[data-bot]:checked").forEach(cb=>{
-   const k=cb.dataset.bot;let sg2=null;try{sg2=S[k](i)}catch(e){}
+   const k=cb.dataset.bot;if(k==="sr"||k==="fib")return;let sg2=null;try{sg2=S[k](i)}catch(e){}
    if(!sg2&&k==="smcf"&&smcBlock){const bk=sym+"b"+candles[i].t;if(!sigSeen.has(bk)){sigSeen.add(bk);log("SMC completo em "+symName(sym)+": zona tocada, mas bloqueada — "+smcBlock,"mu")}}
    if(!sg2)return;const key=sym+k+candles[i].t;if(sigSeen.has(key))return;sigSeen.add(key);
-   log("SINAL "+NAMES[k]+": "+(sg2==="CALL"?"COMPRA ▲":"VENDA ▼")+" em "+symName(sym)+(k==="smcf"?" ["+lastWhy+"]":""),sg2==="CALL"?"up":"dn");
+   log("SINAL "+NAMES[k]+": "+(sg2==="CALL"?"COMPRA ▲":"VENDA ▼")+" em "+symName(sym)+((k==="smcf"||k==="sr"||k==="fib")?" ["+lastWhy+"]":""),sg2==="CALL"?"up":"dn");
    const tr=trend(i);cand.push({sym,name:symName(sym),dir:sg2,k,score:WGT[k]+((tr===1&&sg2==="CALL")||(tr===-1&&sg2==="PUT")?1:0),why:k==="smcf"?lastWhy:""});
   });
  }finally{candles=sc;htf=sh;htfG=sg}
@@ -431,6 +488,7 @@ function trade(type,sym){
  else sendAcc({proposal:1,amount:curStake,basis:"stake",contract_type:type,currency:cur,duration:+$("dur").value,duration_unit:"m",underlying_symbol:pend.sym,passthrough:{bot:1}});
 }
 function analyse(){smcEv=candles.length>30?smcScan(candles.length-2):null;
+ if(candles.length>70){const i2=candles.length-2;srLv=onBot("sr")?srLevels(i2):[];fibG=onBot("fib")?fibLeg(i2):null}else{srLv=[];fibG=null}
  const i=candles.length-2;if(i<200){$("ana").textContent="Carregando histórico ("+candles.length+"/200 velas mínimas)…";return}
  const t=trend(i),c=candles[i],a=sma(20,i),b=sma(99,i),d=sma(200,i);
  const tx=t===1?'<b class="up">Tendência de alta</b> (20 > 99 > 200)':t===-1?'<b class="dn">Tendência de baixa</b> (20 < 99 < 200)':'<b>Sem tendência clara</b> (médias cruzadas)';
@@ -456,6 +514,9 @@ function draw(){
   const zone=(z,col,nm)=>{const xa=Math.max(0,(z.t-v[0].t)/g*w),ya=Y(z.hi),yb=Y(z.lo);x.fillStyle=col;x.fillRect(xa,ya,Math.max(0,xr-xa),Math.max(2,yb-ya));x.fillStyle="#fff";x.font="10px system-ui";x.fillText(nm,xa+3,ya+10)};
   zone(e.ob,"rgba(255,255,255,.16)","OB");if(e.fvg)zone(e.fvg,"rgba(225,6,0,.28)","FVG");
   const xj=(e.t-v[0].t)/g*w+w/2;if(xj>0){x.fillStyle="#fff";x.font="bold 11px system-ui";x.fillText(e.type+(e.d===1?" ▲":" ▼"),Math.max(2,xj-16),e.d===1?Y(candles[e.j].h)-6:Y(candles[e.j].l)+14)}}
+
+ srLv.forEach(L=>{const yy=Y(L.p);if(yy<0||yy>H)return;x.strokeStyle="#ffffff";x.globalAlpha=.45;x.setLineDash([6,4]);x.beginPath();x.moveTo(0,yy);x.lineTo(N*w,yy);x.stroke();x.setLineDash([]);x.globalAlpha=1;x.fillStyle="#cfcfcf";x.font="10px system-ui";x.fillText((L.p<candles[candles.length-1].c?"S ":"R ")+L.p.toFixed(4)+" ("+L.n+"t)",N*w-118,yy-3)});
+ if(fibG){const fx=Math.max(0,(candles[fibG.p1.i].t-v[0].t)/g*w);[[0.5,"#8a8a8a"],[0.618,"#e10600"],[0.786,"#8a8a8a"]].forEach(([r,col])=>{const pr=fibG.up?fibG.p1.p-r*fibG.R:fibG.p1.p+r*fibG.R,yy=Y(pr);x.strokeStyle=col;x.setLineDash([4,3]);x.beginPath();x.moveTo(fx,yy);x.lineTo(N*w,yy);x.stroke();x.setLineDash([]);x.fillStyle=col==="#e10600"?"#ff6b63":"#9a9a9a";x.font="10px system-ui";x.fillText("Fib "+String(r).replace(".",","),N*w-56,yy-3)})}
  trades.filter(t=>t.sym===$("sym").value&&now-t.exp<120).forEach((t,i)=>{
   const x0=(t.t0-v[0].t)/g*w+w/2,x1=(t.exp-v[0].t)/g*w+w/2;if(x1<0)return;
   const y=Y(t.px),xe=Math.min(x1,W-2),done=t.res!==undefined;
