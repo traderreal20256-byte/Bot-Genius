@@ -39,6 +39,7 @@ canvas{width:100%;height:340px;display:block;background:#000;border-radius:6px}
  <div class="logo">ORBY <span>BOTS</span></div>
  <button class="nav act" data-p="dash" data-t="Dashboard">📊 Dashboard</button>
  <button class="nav" data-p="bots" data-t="Bots">🤖 Bots</button>
+ <button class="nav" data-p="mkt" data-t="Mercados">🌐 Mercados</button>
  <button class="nav" data-p="gest" data-t="Gestão de banca">💰 Gestão de banca</button>
  <button class="nav" data-p="hist" data-t="Histórico">📜 Histórico</button>
  <button class="nav" data-p="conf" data-t="Conexão">🔌 Conexão</button>
@@ -80,7 +81,7 @@ canvas{width:100%;height:340px;display:block;background:#000;border-radius:6px}
     <div class="row"><select id="sym"><option value="R_100">Volatility 100</option><option value="R_75">Volatility 75</option><option value="R_50">Volatility 50</option><option value="R_25">Volatility 25</option><option value="R_10">Volatility 10</option><option value="frxEURUSD">EUR/USD</option><option value="frxGBPUSD">GBP/USD</option><option value="cryBTCUSD">BTC/USD</option></select>
     <select id="gran"><option value="60">M1</option><option value="300">M5</option><option value="900">M15</option><option value="3600">H1</option></select><span id="price" class="mu"></span></div>
     <canvas id="cv"></canvas>
-    <div class="mu" style="margin-top:6px;font-size:12px">━ SMA 20 (branca) &nbsp;<span style="color:#ff6b63">━ SMA 99</span> &nbsp;<span style="color:#8a8a8a">━ SMA 200</span> &nbsp;<span style="color:#ff6a00">┅ ordens</span></div>
+    <div class="mu" style="margin-top:6px;font-size:12px">━ SMA 20 (branca) &nbsp;<span style="color:#ff6b63">━ SMA 99</span> &nbsp;<span style="color:#8a8a8a">━ SMA 200</span> &nbsp;<span style="color:#ff6a00">┅ ordens</span> &nbsp;<span>▭ OB (branco) · FVG (vermelho)</span></div>
    </div>
    <div>
     <div class="card"><h2>Controle</h2><button id="pw" class="p" style="width:100%;padding:14px;font-size:15px">▶ Ligar bot</button></div>
@@ -93,12 +94,34 @@ canvas{width:100%;height:340px;display:block;background:#000;border-radius:6px}
    <div class="bot"><div>Pullback na média + engolfo<small>Médias 20/99/200 alinhadas; toque na SMA20 e engolfo da vela anterior</small></div><input type="checkbox" data-bot="pbe" checked></div>
    <div class="bot"><div>Rompimento<small>Fecha acima/abaixo da máxima/mínima das últimas 20 velas</small></div><input type="checkbox" data-bot="brk"></div>
    <div class="bot"><div>Pullback<small>Tendência pelas médias, retorno e retomada da SMA20</small></div><input type="checkbox" data-bot="pb"></div>
-   <div class="bot"><div>SMC<small>Varredura de liquidez em topo/fundo de swing com rejeição</small></div><input type="checkbox" data-bot="smc"></div>
+   <div class="bot"><div>SMC simplificado<small>Varredura de liquidez em topo/fundo de swing com rejeição</small></div><input type="checkbox" data-bot="smc"></div>
+   <div class="bot"><div>SMC completo<small>Quebra de estrutura (CHoCH/BOS) + Order Block + FVG: entra no primeiro retorno à zona, com vela de confirmação. As zonas aparecem no gráfico.</small></div><input type="checkbox" data-bot="smcf" checked></div>
+ </div>
+ <div class="card"><h2>Filtros do SMC completo</h2>
+   <div class="bot"><div>Premium / Desconto<small>Compra só na metade inferior (desconto) e vende só na superior (premium) da faixa das últimas 80 velas</small></div><input type="checkbox" id="f_pd" checked></div>
+   <div class="bot"><div>Alinhamento multi-timeframe<small>Só opera se a estrutura do tempo gráfico maior (M1→M15, M5→H1, M15→H4, H1→D1) apontar na mesma direção</small></div><input type="checkbox" id="f_htf" checked></div>
+   <div class="bot"><div>Varredura de liquidez de sessão<small>Exige que o preço tenha varrido a máxima ou mínima das sessões Ásia, Londres ou Nova York (horário UTC) nas últimas 20 velas e voltado</small></div><input type="checkbox" id="f_sess"></div>
  </div></section>
+
+ <section class="page" id="p-mkt"><div class="card"><h2>Varredura de mercados</h2>
+   <div class="bot"><div>Analisar vários mercados ao mesmo tempo<small>O bot acompanha os grupos marcados e faz uma operação por vez, escolhendo a melhor oportunidade. Desmarcado: opera só o ativo do gráfico.</small></div><input type="checkbox" id="scan" checked></div>
+   <div class="bot"><div>Forex<small>EUR/USD, GBP/USD, USD/JPY, AUD/USD, USD/CAD, USD/CHF, NZD/USD, EUR/JPY, GBP/JPY, EUR/GBP, AUD/JPY, EUR/AUD</small></div><input type="checkbox" id="g_fx" checked></div>
+   <div class="bot"><div>Ouro<small>XAU/USD</small></div><input type="checkbox" id="g_xau" checked></div>
+   <div class="bot"><div>Índices americanos<small>US 500, US Tech 100, Wall Street 30</small></div><input type="checkbox" id="g_us" checked></div>
+   <div class="bot"><div>Índices sintéticos<small>Volatility 10/25/50/75/100 (24h, aleatórios)</small></div><input type="checkbox" id="g_syn"></div>
+  </div>
+  <div class="card"><h2>Status dos mercados</h2><div id="mktlist" class="mu" style="font-size:13px"></div></div></section>
 
  <section class="page" id="p-gest"><div class="card"><h2>Execução e gestão</h2>
    <div class="row"><label>Stake inicial <input id="stake" type="number" value="1" min="0.35" step="0.5" style="width:90px"></label>
    <label>Duração (min) <input id="dur" type="number" value="5" min="1" style="width:80px"></label></div>
+   <div class="row"><label>Tipo de contrato <select id="ctype"><option value="rf">Rise/Fall</option><option value="mult">Multiplicadores</option></select></label></div>
+   <div class="row" id="mrow" style="display:none"><label>Multiplicador <input id="mult" type="number" value="100" min="1" style="width:80px"></label>
+   <label>Take Profit <input id="mtp" type="number" value="1" min="0" step="0.5" style="width:80px" disabled></label>
+   <label><input type="checkbox" id="r21" checked> Alvo 2:1 (TP = 2× SL)</label>
+   <label>Stop Loss <input id="msl" type="number" value="0.8" min="0" step="0.5" style="width:80px"></label>
+   <label>Fechar após (min) <input id="mtime" type="number" value="5" min="0" style="width:80px"></label>
+   <div class="mu" style="font-size:12px;width:100%">Multiplicadores: sem duração fixa. O contrato fecha ao atingir Take Profit, Stop Loss ou o tempo em "Fechar após" (0 = sem limite de tempo). Com "Alvo 2:1" marcado, o Take Profit é sempre o dobro do Stop Loss (o campo Take Profit fica travado). O Stop Loss fica limitado a 90% do stake. Ao atingir o Stop Win ou o Stop Loss da sessão, o bot desliga e fecha a operação aberta na hora (vale para Multiplicadores). A perda máxima é o stake, mas a alavancagem faz a perda chegar rápido.</div></div>
    <div class="row"><label>Gestão <select id="mg"><option value="fixa">Stake fixo</option><option value="soros">Sorosgale</option></select></label></div>
    <div class="row"><label>Stop Loss <input id="sl" type="number" value="10" min="0" step="1" style="width:90px"></label>
    <label>Stop Win <input id="sw" type="number" value="10" min="0" step="1" style="width:90px"></label></div>
@@ -179,15 +202,47 @@ async function openAccount(id){
 }
 
 setInterval(()=>{sendPub({ping:1});sendAcc({ping:1})},15000);
-// ---- Dados de mercado (WebSocket público) ----
+// ---- Dados de mercado (WebSocket público) - vários ativos ----
+const UNI=[["frxEURUSD","EUR/USD","fx"],["frxGBPUSD","GBP/USD","fx"],["frxUSDJPY","USD/JPY","fx"],["frxAUDUSD","AUD/USD","fx"],["frxUSDCAD","USD/CAD","fx"],["frxUSDCHF","USD/CHF","fx"],["frxNZDUSD","NZD/USD","fx"],["frxEURJPY","EUR/JPY","fx"],["frxGBPJPY","GBP/JPY","fx"],["frxEURGBP","EUR/GBP","fx"],["frxAUDJPY","AUD/JPY","fx"],["frxEURAUD","EUR/AUD","fx"],
+ ["frxXAUUSD","Ouro XAU/USD","xau"],["OTC_SPC","US 500","us"],["OTC_NDX","US Tech 100","us"],["OTC_DJI","Wall Street 30","us"],
+ ["R_100","Volatility 100","syn"],["R_75","Volatility 75","syn"],["R_50","Volatility 50","syn"],["R_25","Volatility 25","syn"],["R_10","Volatility 10","syn"]];
+let M={},reqMap={},subGen=0,started=false,cand=[],candTimer=null;const sigSeen=new Set(),WGT={smcf:3,pbe:2,brk:1,pb:1,smc:1};
+const symName=id=>(UNI.find(u=>u[0]===id)||[0,id])[1];
 function connectPub(){pub=new WebSocket("wss://api.derivws.com/trading/v1/options/ws/public");
- pub.onopen=subscribeCandles;pub.onclose=()=>setTimeout(connectPub,3000);pub.onmessage=e=>handle(JSON.parse(e.data))}
-let olderTried=false;
-function subscribeCandles(){olderTried=false;
- sendPub({forget_all:"candles"});candles=[];
- sendPub({ticks_history:$("sym").value,adjust_start_time:1,count:1000,end:"latest",style:"candles",granularity:+$("gran").value,subscribe:1});
+ pub.onopen=requestSymbols;pub.onclose=()=>{started=false;setTimeout(connectPub,3000)};pub.onmessage=e=>handle(JSON.parse(e.data))}
+function requestSymbols(){started=false;sendPub({active_symbols:"brief",contract_type:["CALL","PUT"],req_id:9});setTimeout(()=>{if(!started)startScan()},2500)}
+function reconcile(list){
+ const ids={};list.forEach(a=>{const id=a.underlying_symbol||a.symbol;if(id)ids[id]=a});
+ if(!Object.keys(ids).length)return;
+ Object.keys(ids).forEach(id=>{const a=ids[id],nm=a.underlying_symbol_name||a.display_name||id;if(UNI.some(u=>u[0]===id))return;
+  if(/XAUUSD/i.test(id))UNI.push([id,nm,"xau"]);
+  else if(a.market==="indices"&&/(US |Wall|Dow|Nasdaq|S&P|Tech 100)/i.test(nm))UNI.push([id,nm,"us"])});
+ UNI.forEach(u=>{const a=ids[u[0]];if(!a){u[3]=false}else{u[3]=true;u[4]=(a.exchange_is_open===1||a.exchange_is_open===true)&&a.is_trading_suspended!==1}});
 }
-$("sym").onchange=$("gran").onchange=subscribeCandles;
+function startScan(){started=true;buildSymSelect();subscribeAll();renderMkt()}
+function buildSymSelect(){const sel=$("sym"),cur=sel.value;sel.innerHTML="";
+ UNI.filter(u=>u[3]!==false).forEach(u=>{const o=document.createElement("option");o.value=u[0];o.textContent=u[1];sel.appendChild(o)});
+ if([...sel.options].some(o=>o.value===cur))sel.value=cur}
+function bind(){const d=M[$("sym").value];if(d){candles=d.c;htf=d.h;htfG=d.g}else{candles=[];htf=[]}}
+function subscribeAll(){
+ const gen=++subGen;sendPub({forget_all:"candles"});M={};reqMap={};
+ const gr=+$("gran").value,hg=HMAP[gr]||14400,set=[$("sym").value];
+ if($("scan").checked)UNI.forEach(u=>{if(u[3]!==false&&$("g_"+u[2])&&$("g_"+u[2]).checked&&!set.includes(u[0]))set.push(u[0])});
+ set.forEach((sy,n)=>{M[sy]={c:[],h:[],g:hg,older:false,n};
+  reqMap[1000+n*3]={sym:sy,kind:"main"};reqMap[1001+n*3]={sym:sy,kind:"htf"};reqMap[1002+n*3]={sym:sy,kind:"older"};
+  setTimeout(()=>{if(gen!==subGen)return;
+   sendPub({ticks_history:sy,adjust_start_time:1,count:1000,end:"latest",style:"candles",granularity:gr,subscribe:1,req_id:1000+n*3});
+   sendPub({ticks_history:sy,adjust_start_time:1,count:400,end:"latest",style:"candles",granularity:hg,subscribe:1,req_id:1001+n*3})},n*150)});
+ htfG=hg;bind();renderMkt();
+}
+function resolve(m){const r=m.req_id!=null?m.req_id:(m.echo_req&&m.echo_req.req_id);if(r!=null&&reqMap[r])return reqMap[r];
+ const o=m.ohlc;if(o){const sy=o.symbol||o.underlying_symbol;if(sy&&M[sy])return{sym:sy,kind:(+o.granularity===M[sy].g&&M[sy].g!==+$("gran").value)?"htf":"main"}}return null}
+$("sym").onchange=()=>{if(M[$("sym").value]){bind();$("price").textContent="";draw();analyse()}else subscribeAll()};
+$("gran").onchange=subscribeAll;
+["scan","g_fx","g_xau","g_us","g_syn"].forEach(id=>$(id).onchange=subscribeAll);
+function renderMkt(){const el=$("mktlist");if(!el)return;const gn={fx:"Forex",xau:"Ouro",us:"Índice EUA",syn:"Sintético"};
+ el.innerHTML=UNI.map(u=>{const on=M[u[0]],st=u[3]===false?"indisponível":(u[4]===false?"fechado":u[4]?"aberto":"—");
+  return'<div style="display:flex;justify-content:space-between;gap:8px;padding:6px 0;border-bottom:1px solid #1f1f1f"><span style="color:#fff">'+u[1]+' <span class="mu">· '+gn[u[2]]+'</span></span><span>'+st+' · '+(on?on.c.length+" velas":"não monitorado")+'</span></div>'}).join("")}
 
 function handle(m){
  if((m.msg_type==="ping"&&!m.error)||m.msg_type==="forget_all")return;if(m.error){if(m.echo_req&&(m.echo_req.proposal||m.echo_req.buy))busy=false;log("Erro: "+m.error.message,"dn");return}
@@ -195,15 +250,22 @@ function handle(m){
   const demo=m.authorize.is_virtual;$("acct").textContent=(demo?"DEMO ":"REAL ")+acctId;$("acct").className="badge "+(demo?"demo":"real");
   $("login").style.display="none";$("logout").style.display="";sendAcc({balance:1,subscribe:1});log("Conectado: "+acctId+(demo?" (demo)":" (REAL)"))}
  else if(m.msg_type==="balance"){cur=m.balance.currency;$("bal").textContent=m.balance.balance.toFixed(2)+" "+m.balance.currency;$("s1b").textContent=m.balance.balance.toFixed(2)}
- else if(m.msg_type==="candles"){const arr=m.candles.map(c=>({t:c.epoch,o:+c.open,h:+c.high,l:+c.low,c:+c.close}));
-  if(m.echo_req&&m.echo_req.req_id===77){if(candles.length)candles=arr.filter(c=>c.t<candles[0].t).concat(candles)}
-  else{candles=arr;if(arr.length<230&&!olderTried){olderTried=true;sendPub({ticks_history:$("sym").value,count:500,end:arr[0].t-1,style:"candles",granularity:+$("gran").value,req_id:77})}}
-  draw();analyse()}
- else if(m.msg_type==="ohlc"){const o=m.ohlc,t=+o.open_time,c={t,o:+o.open,h:+o.high,l:+o.low,c:+o.close},L=candles[candles.length-1];
-  if(L&&L.t===t)candles[candles.length-1]=c;else{candles.push(c);if(candles.length>400)candles.shift();onNewCandle()}
-  $("price").textContent="Preço: "+c.c;draw()}
+ else if(m.msg_type==="active_symbols"){reconcile(m.active_symbols||[]);startScan()}
+ else if(m.msg_type==="candles"){const arr=m.candles.map(c=>({t:c.epoch,o:+c.open,h:+c.high,l:+c.low,c:+c.close})),r=resolve(m);if(!r)return;const d=M[r.sym];if(!d)return;
+  if(r.kind==="htf")d.h=arr;
+  else if(r.kind==="older"){if(d.c.length)d.c=arr.filter(c=>c.t<d.c[0].t).concat(d.c)}
+  else{d.c=arr;if(arr.length&&arr.length<230&&!d.older){d.older=true;sendPub({ticks_history:r.sym,count:500,end:arr[0].t-1,style:"candles",granularity:+$("gran").value,req_id:1002+d.n*3})}}
+  if(r.sym===$("sym").value){bind();draw();analyse()}}
+ else if(m.msg_type==="ohlc"){const o=m.ohlc,t=+o.open_time,r=resolve(m);if(!r)return;const d=M[r.sym];if(!d)return;
+  const c={t,o:+o.open,h:+o.high,l:+o.low,c:+o.close};
+  if(r.kind==="htf"){const L=d.h[d.h.length-1];if(L&&L.t===t)d.h[d.h.length-1]=c;else if(!L||t>L.t)d.h.push(c);return}
+  if(r.kind!=="main")return;
+  const L=d.c[d.c.length-1];
+  if(L&&L.t===t)d.c[d.c.length-1]=c;
+  else if(!L||t>L.t){d.c.push(c);if(d.c.length>1200)d.c.shift();if(botOn&&d.c.length>30)scanOn(r.sym);if(r.sym===$("sym").value)analyse()}
+  if(r.sym===$("sym").value){$("price").textContent="Preço: "+c.c;draw()}}
  else if(m.msg_type==="proposal"&&m.echo_req.passthrough){sendAcc({buy:m.proposal.id,price:curStake});}
- else if(m.msg_type==="buy"){const id=m.buy.contract_id;openIds.add(id);{const n0=Math.floor(Date.now()/1000),lc=candles[candles.length-1];if(pend)trades.push({id,type:pend.type,sym:pend.sym,stake:curStake,t0:n0,exp:n0+pend.dur*60,px:lc?lc.c:0});if(trades.length>15)trades.shift()}log("Compra #"+id+" a "+m.buy.buy_price,"up");stats.n++;$("s2").textContent=stats.n;sendAcc({proposal_open_contract:1,contract_id:id,subscribe:1})}
+ else if(m.msg_type==="buy"){const id=m.buy.contract_id;openIds.add(id);{const n0=Math.floor(Date.now()/1000),lc=(M[pend&&pend.sym]||{c:candles}).c.slice(-1)[0];if(pend)trades.push({id,type:pend.type,sym:pend.sym,stake:curStake,t0:n0,exp:n0+(pend.mult?(pend.mtime>0?pend.mtime*60:86400):pend.dur*60),noexp:pend.mult&&!(pend.mtime>0),mult:pend.mult?pend.m:0,px:lc?lc.c:0});if(trades.length>15)trades.shift()}if(pend&&pend.mult&&pend.mtime>0)setTimeout(()=>{if(openIds.has(id))sendAcc({sell:id,price:0})},pend.mtime*60000);log("Compra #"+id+" a "+m.buy.buy_price,"up");stats.n++;$("s2").textContent=stats.n;sendAcc({proposal_open_contract:1,contract_id:id,subscribe:1})}
  else if(m.msg_type==="proposal_open_contract"){const c=m.proposal_open_contract;if(!c.is_sold)updBar(c);if(c.is_sold&&openIds.has(c.contract_id)){openIds.delete(c.contract_id);trades=trades.filter(t=>t.id!==c.contract_id);clearBar();draw();sendAcc({forget:m.subscription.id});
   const p=+c.profit;stats.pl+=p;p>0?stats.w++:stats.l++;$("s3").textContent=stats.w;$("s4").textContent=stats.l;
   $("s5").textContent=stats.pl.toFixed(2);$("s5").className=stats.pl>=0?"up":"dn";manage(p);log("Resultado #"+c.contract_id+": "+p.toFixed(2),p>0?"up":"dn")}}
@@ -229,24 +291,104 @@ const S={
    if(sl===null&&x.l<candles[k-1].l&&x.l<candles[k-2].l&&x.l<candles[k+1].l&&x.l<candles[k+2].l)sl=x.l}
   const c=candles[i];if(sh&&c.h>sh&&c.c<sh&&bear(c))return"PUT";if(sl&&c.l<sl&&c.c>sl&&bull(c))return"CALL";return null}
 };
-const NAMES={pbe:"Pullback+Engolfo",brk:"Rompimento",pb:"Pullback",smc:"SMC"};
-
-function onNewCandle(){
- const i=candles.length-2;if(i<3)return;if(!botOn){analyse();return}
- document.querySelectorAll("[data-bot]:checked").forEach(cb=>{
-  const k=cb.dataset.bot,s=S[k](i);if(!s)return;
-  const key=k+candles[i].t;if(key===lastSig)return;lastSig=key;
-  log("SINAL "+NAMES[k]+": "+(s==="CALL"?"COMPRA ▲":"VENDA ▼")+" em "+$("sym").value,s==="CALL"?"up":"dn");
-  if(!$("sigonly").checked)trade(s)});
- analyse();
+const NAMES={pbe:"Pullback+Engolfo",brk:"Rompimento",pb:"Pullback",smc:"SMC simples",smcf:"SMC completo"};
+let smcEv=null,lastWhy="",htf=[],htfG=900,sweepName="";
+const HMAP={60:900,300:3600,900:14400,3600:86400};
+const g2n=g=>({60:"M1",300:"M5",900:"M15",3600:"H1",14400:"H4",86400:"D1"}[g]||g+"s");
+function mkEv(A,d,j,type,from){
+ from=Math.max(1,Math.min(from,j-1));let o=from;
+ for(let q=from;q<=j;q++){if(d===1?A[q].l<A[o].l:A[q].h>A[o].h)o=q}
+ let ob=null;for(let q=o;q>=Math.max(0,o-3);q--){const x=A[q];if(d===1?x.c<x.o:x.c>x.o){ob={lo:x.l,hi:x.h,t:x.t};break}}
+ if(!ob){const x=A[o];ob={lo:x.l,hi:x.h,t:x.t}}
+ let fvg=null;
+ for(let q=o+1;q<j;q++){const p=A[q-1],n=A[q+1];
+  if(d===1&&p.h<n.l)fvg={lo:p.h,hi:n.l,t:A[q-1].t};
+  if(d===-1&&p.l>n.h)fvg={lo:n.h,hi:p.l,t:A[q-1].t}}
+ return{d,j,type,ob,fvg,t:A[j].t}
 }
-let trades=[],pend=null,openIds=new Set(),botOn=false,busy=false,busyAt=0,lossAcc=0,curStake=0,nextStake=0,startPl=0;
+function smcScan(i,A){
+ A=A||candles;const k=2,st=Math.max(k,i-160);let trend=0,lh=null,ll=null,ev=null;
+ for(let j=st;j<=i;j++){
+  const q=j-k;
+  if(q>=st+k){const x=A[q];let h=true,l=true;
+   for(let m=1;m<=k;m++){if(!(x.h>A[q-m].h&&x.h>A[q+m].h))h=false;if(!(x.l<A[q-m].l&&x.l<A[q+m].l))l=false}
+   if(h)lh={i:q,p:x.h,b:false};if(l)ll={i:q,p:x.l,b:false}}
+  const c=A[j];
+  if(lh&&!lh.b&&c.c>lh.p){lh.b=true;ev=mkEv(A,1,j,trend===-1?"CHoCH":"BOS",ll?ll.i:j-8);trend=1}
+  else if(ll&&!ll.b&&c.c<ll.p){ll.b=true;ev=mkEv(A,-1,j,trend===1?"CHoCH":"BOS",lh?lh.i:j-8);trend=-1}
+ }
+ return ev;
+}
+// Premium/Desconto: faixa das últimas 80 velas
+function pdRange(i){let hi=-1e18,lo=1e18;for(let q=Math.max(0,i-80);q<=i;q++){hi=Math.max(hi,candles[q].h);lo=Math.min(lo,candles[q].l)}return{hi,lo,eq:(hi+lo)/2}}
+// Tempo gráfico maior
+function htfDir(){if(htf.length<40)return 0;const e=smcScan(htf.length-2,htf);return e?e.d:0}
+// Liquidez de sessões (UTC): Ásia 00-07, Londres 07-13, Nova York 13-21
+function sessLevels(i){
+ const S3=[[0,7,"Ásia"],[7,13,"Londres"],[13,21,"Nova York"]],map={},out={},tNow=candles[i].t;
+ for(let q=Math.max(0,i-1000);q<=i;q++){const c=candles[q],d=new Date(c.t*1000),h=d.getUTCHours()+d.getUTCMinutes()/60,day=Math.floor(c.t/86400);
+  const si=S3.findIndex(z=>h>=z[0]&&h<z[1]);if(si<0)continue;
+  const key=day*3+si,m=map[key]||(map[key]={si,end:day*86400+S3[si][1]*3600,hi:-1e18,lo:1e18,t0:c.t});
+  m.hi=Math.max(m.hi,c.h);m.lo=Math.min(m.lo,c.l)}
+ Object.values(map).filter(m=>m.end<=tNow).sort((p,n)=>p.end-n.end).forEach(m=>{out[m.si]={n:S3[m.si][2],h:m.hi,l:m.lo,t0:m.t0,end:m.end}});
+ return Object.values(out);
+}
+function sweep(i){const L=sessLevels(i);let r=0;sweepName="";
+ for(let q=Math.max(1,i-20);q<=i;q++){const c=candles[q];
+  for(const z of L){if(c.t<z.end)continue;
+   if(c.h>z.h&&c.c<z.h){r=-1;sweepName=z.n+" máx"}
+   if(c.l<z.l&&c.c>z.l){r=1;sweepName=z.n+" mín"}}}
+ return r}
+S.smcf=i=>{
+ if(i<40)return null;const ev=smcScan(i);if(!ev||i-ev.j<1||i-ev.j>40)return null;
+ const c=candles[i],zs=[[ev.ob,"OB"]];if(ev.fvg)zs.push([ev.fvg,"FVG"]);let hit=null;
+ for(const[z,n]of zs){
+  let used=false;for(let q=ev.j+1;q<i;q++){if(ev.d===1?candles[q].l<=z.hi:candles[q].h>=z.lo){used=true;break}}
+  if(used)continue;
+  if(ev.d===1&&c.l<=z.hi&&c.c>z.lo&&bull(c)){hit=n;break}
+  if(ev.d===-1&&c.h>=z.lo&&c.c<z.hi&&bear(c)){hit=n;break}
+ }
+ if(!hit)return null;
+ const ex=[];
+ if($("f_pd").checked){const r=pdRange(i);if(ev.d===1?c.c>=r.eq:c.c<=r.eq)return null;ex.push(ev.d===1?"Desconto":"Premium")}
+ if($("f_htf").checked){const h=htfDir();if(h!==0&&h!==ev.d)return null;ex.push(g2n(htfG)+(h===0?" n/d":h===1?" ▲":" ▼"))}
+ if($("f_sess").checked){if(sweep(i)!==ev.d)return null;ex.push("Varredura "+sweepName)}
+ lastWhy=ev.type+(ev.d===1?" ▲":" ▼")+" + "+hit+(ex.length?" · "+ex.join(" · "):"");
+ return ev.d===1?"CALL":"PUT";
+};
+function smcTxt(){const e=smcEv;if(!e)return"<br>SMC: sem estrutura recente";
+ const i=candles.length-2,r=pdRange(i),h=htfDir();
+ return"<br>SMC: "+e.type+(e.d===1?" ▲":" ▼")+" há "+(i-e.j)+" velas · OB "+e.ob.lo.toFixed(4)+"–"+e.ob.hi.toFixed(4)+(e.fvg?" · FVG "+e.fvg.lo.toFixed(4)+"–"+e.fvg.hi.toFixed(4):"")
+ +"<br>Zona: "+(candles[i].c<r.eq?"Desconto":"Premium")+" (EQ "+r.eq.toFixed(4)+") · "+g2n(htfG)+": "+(h===1?"alta":h===-1?"baixa":"indisponível")}
+
+function onNewCandle(){analyse()}
+function scanOn(sym){
+ const d=M[sym];if(!d||d.c.length<30)return;
+ const sc=candles,sh=htf,sg=htfG;candles=d.c;htf=d.h;htfG=d.g;
+ try{
+  const i=candles.length-2;
+  document.querySelectorAll("[data-bot]:checked").forEach(cb=>{
+   const k=cb.dataset.bot;let sg2=null;try{sg2=S[k](i)}catch(e){}
+   if(!sg2)return;const key=sym+k+candles[i].t;if(sigSeen.has(key))return;sigSeen.add(key);
+   log("SINAL "+NAMES[k]+": "+(sg2==="CALL"?"COMPRA ▲":"VENDA ▼")+" em "+symName(sym)+(k==="smcf"?" ["+lastWhy+"]":""),sg2==="CALL"?"up":"dn");
+   const tr=trend(i);cand.push({sym,name:symName(sym),dir:sg2,k,score:WGT[k]+((tr===1&&sg2==="CALL")||(tr===-1&&sg2==="PUT")?1:0),why:k==="smcf"?lastWhy:""});
+  });
+ }finally{candles=sc;htf=sh;htfG=sg}
+ if(cand.length&&!candTimer)candTimer=setTimeout(pickBest,2500);
+}
+function pickBest(){candTimer=null;const list=cand.splice(0);if(!botOn||!list.length)return;
+ const g={};list.forEach(c=>{const key=c.sym+c.dir,x=g[key]||(g[key]={sym:c.sym,name:c.name,dir:c.dir,score:0,ks:[]});x.score+=c.score;x.ks.push(NAMES[c.k])});
+ const arr=Object.values(g).sort((p,q)=>q.score-p.score),best=arr[0];
+ log("Melhor oportunidade: "+best.name+" "+(best.dir==="CALL"?"COMPRA ▲":"VENDA ▼")+" · nota "+best.score+" ("+best.ks.join(" + ")+")"+(arr.length>1?" · "+(arr.length-1)+" outra(s) descartada(s)":""),"up");
+ if(!$("sigonly").checked)trade(best.dir,best.sym)}
+let stopSent=false,trades=[],pend=null,openIds=new Set(),botOn=false,busy=false,busyAt=0,lossAcc=0,curStake=0,nextStake=0,startPl=0;
+const ctm=()=>$("ctype").value==="mult";
 const num=id=>+$(id).value||0,r2=x=>Math.round(x*100)/100;
 function showNext(){$("s6").textContent=nextStake?nextStake.toFixed(2):"—"}
 function resetStake(){lossAcc=0;nextStake=Math.max(0.35,num("stake"));showNext()}
 function setBot(on,why){botOn=on;$("pw").textContent=on?"⏹ Desligar bot":"▶ Ligar bot";$("pw").className=on?"r":"p";
  $("s7").textContent=on?"ON":"OFF";$("s7").className=on?"up":"dn";
- if(on){startPl=stats.pl;resetStake();log("Bot LIGADO","up")}else log("Bot DESLIGADO"+(why?" — "+why:""),"dn")}
+ if(on){stopSent=false;startPl=stats.pl;resetStake();log("Bot LIGADO","up")}else log("Bot DESLIGADO"+(why?" — "+why:""),"dn")}
 $("pw").onclick=()=>setBot(!botOn);
 $("stake").onchange=()=>{if(!lossAcc)resetStake()};
 $("mg").onchange=resetStake;
@@ -264,18 +406,21 @@ function manage(p){
   else if(num("sw")>0&&sp>=num("sw"))setBot(false,"Stop Win atingido (+"+sp.toFixed(2)+")");
  }
 }
-function trade(type){
+function trade(type,sym){
  if(!acc||acc.readyState!==1){log("Conta desconectada.","dn");return}
- if(busy&&Date.now()-busyAt<(num("dur")*60+90)*1000){log("Aguardando a operação anterior terminar.","mu");return}
+ if(busy&&Date.now()-busyAt<(ctm()?(num("mtime")>0?num("mtime")*60+90:86400):num("dur")*60+90)*1000){log("Aguardando a operação anterior terminar.","mu");return}
  if(!nextStake)resetStake();
- curStake=nextStake;busy=true;busyAt=Date.now();pend={type,dur:num("dur"),sym:$("sym").value};
- sendAcc({proposal:1,amount:curStake,basis:"stake",contract_type:type,currency:cur,duration:+$("dur").value,duration_unit:"m",underlying_symbol:$("sym").value,passthrough:{bot:1}});
+ curStake=nextStake;busy=true;busyAt=Date.now();pend={type,dur:num("dur"),sym:sym||$("sym").value,mult:ctm(),mtime:num("mtime"),m:num("mult")};
+ if(ctm()){const lo={},sl=num("msl")>0?Math.min(num("msl"),r2(curStake*0.9)):0,tp=$("r21").checked&&sl>0?r2(sl*2):num("mtp");if(tp>0)lo.take_profit=tp;if(sl>0)lo.stop_loss=sl;log("Multiplicador x"+num("mult")+" · SL "+sl+" · TP "+tp+($("r21").checked?" (2:1)":""),"mu");
+  const q={proposal:1,amount:curStake,basis:"stake",contract_type:type==="CALL"?"MULTUP":"MULTDOWN",currency:cur,multiplier:num("mult"),underlying_symbol:pend.sym,passthrough:{bot:1}};
+  if(Object.keys(lo).length)q.limit_order=lo;sendAcc(q)}
+ else sendAcc({proposal:1,amount:curStake,basis:"stake",contract_type:type,currency:cur,duration:+$("dur").value,duration_unit:"m",underlying_symbol:pend.sym,passthrough:{bot:1}});
 }
-function analyse(){
+function analyse(){smcEv=candles.length>30?smcScan(candles.length-2):null;
  const i=candles.length-2;if(i<200){$("ana").textContent="Carregando histórico ("+candles.length+"/200 velas mínimas)…";return}
  const t=trend(i),c=candles[i],a=sma(20,i),b=sma(99,i),d=sma(200,i);
  const tx=t===1?'<b class="up">Tendência de alta</b> (20 > 99 > 200)':t===-1?'<b class="dn">Tendência de baixa</b> (20 < 99 < 200)':'<b>Sem tendência clara</b> (médias cruzadas)';
- $("ana").innerHTML=tx+"<br>Fechamento "+c.c.toFixed(4)+" · SMA20 "+a.toFixed(4)+" · SMA99 "+b.toFixed(4)+" · SMA200 "+d.toFixed(4)+"<br>Preço "+(c.c>a?"acima":"abaixo")+" da SMA20 · distância "+(Math.abs(c.c-a)/a*100).toFixed(3)+"%";
+ $("ana").innerHTML=tx+"<br>Fechamento "+c.c.toFixed(4)+" · SMA20 "+a.toFixed(4)+" · SMA99 "+b.toFixed(4)+" · SMA200 "+d.toFixed(4)+"<br>Preço "+(c.c>a?"acima":"abaixo")+" da SMA20 · distância "+(Math.abs(c.c-a)/a*100).toFixed(3)+"%"+smcTxt();
 }
 
 // ---- Gráfico ----
@@ -291,6 +436,12 @@ function draw(){
  [[20,"#ffffff"],[99,"#ff6b63"],[200,"#8a8a8a"]].forEach(([n,col])=>{x.strokeStyle=col;x.lineWidth=1.5;x.beginPath();let s=false;
   for(let k=0;k<N;k++){const m=sma(n,off+k);if(m===null)continue;const px=k*w+w/2;s?x.lineTo(px,Y(m)):x.moveTo(px,Y(m));s=true}x.stroke();x.lineWidth=1});
  const g=+$("gran").value,now=Date.now()/1000,O="#ff6a00",fmt=q=>String(Math.floor(q/60)).padStart(2,"0")+":"+String(Math.floor(q%60)).padStart(2,"0");
+ if($("f_pd").checked&&candles.length>82){const r=pdRange(candles.length-2),ye=Y(r.eq);x.strokeStyle="#ffffff";x.globalAlpha=.55;x.setLineDash([2,4]);x.beginPath();x.moveTo(0,ye);x.lineTo(N*w,ye);x.stroke();x.setLineDash([]);x.globalAlpha=1;x.fillStyle="#9a9a9a";x.font="10px system-ui";x.fillText("PREMIUM",4,ye-4);x.fillText("DESCONTO · EQ 50%",4,ye+12)}
+ if($("f_sess").checked&&candles.length>30){sessLevels(candles.length-2).forEach(z=>{const xa=Math.max(0,(z.t0-v[0].t)/g*w);[[z.h,"máx"],[z.l,"mín"]].forEach(([pv,nm])=>{const yy=Y(pv);if(yy<0||yy>H)return;x.strokeStyle="#8a8a8a";x.setLineDash([1,4]);x.beginPath();x.moveTo(xa,yy);x.lineTo(N*w,yy);x.stroke();x.setLineDash([]);x.fillStyle="#bdbdbd";x.font="10px system-ui";x.fillText(z.n+" "+nm,N*w-78,yy-3)})})}
+ if(smcEv&&candles.length-2-smcEv.j<70){const e=smcEv,xr=N*w;
+  const zone=(z,col,nm)=>{const xa=Math.max(0,(z.t-v[0].t)/g*w),ya=Y(z.hi),yb=Y(z.lo);x.fillStyle=col;x.fillRect(xa,ya,Math.max(0,xr-xa),Math.max(2,yb-ya));x.fillStyle="#fff";x.font="10px system-ui";x.fillText(nm,xa+3,ya+10)};
+  zone(e.ob,"rgba(255,255,255,.16)","OB");if(e.fvg)zone(e.fvg,"rgba(225,6,0,.28)","FVG");
+  const xj=(e.t-v[0].t)/g*w+w/2;if(xj>0){x.fillStyle="#fff";x.font="bold 11px system-ui";x.fillText(e.type+(e.d===1?" ▲":" ▼"),Math.max(2,xj-16),e.d===1?Y(candles[e.j].h)-6:Y(candles[e.j].l)+14)}}
  trades.filter(t=>t.sym===$("sym").value&&now-t.exp<120).forEach((t,i)=>{
   const x0=(t.t0-v[0].t)/g*w+w/2,x1=(t.exp-v[0].t)/g*w+w/2;if(x1<0)return;
   const y=Y(t.px),xe=Math.min(x1,W-2),done=t.res!==undefined;
@@ -298,7 +449,7 @@ function draw(){
   x.beginPath();x.moveTo(x0,y);x.lineTo(xe,y);x.stroke();
   x.beginPath();x.moveTo(xe,0);x.lineTo(xe,H);x.stroke();x.setLineDash([]);x.lineWidth=1;
   x.beginPath();if(t.type==="CALL"){x.moveTo(x0,y-2);x.lineTo(x0-6,y+9);x.lineTo(x0+6,y+9)}else{x.moveTo(x0,y+2);x.lineTo(x0-6,y-9);x.lineTo(x0+6,y-9)}x.closePath();x.fill();
-  const left=t.exp-now,txt=(t.type==="CALL"?"COMPRA ":"VENDA ")+t.stake.toFixed(2)+" · "+(done?(t.res>=0?"+":"")+t.res.toFixed(2):left>0?fmt(left):"finalizando…");
+  const left=t.exp-now,txt=(t.type==="CALL"?"COMPRA ":"VENDA ")+t.stake.toFixed(2)+" · "+(done?(t.res>=0?"+":"")+t.res.toFixed(2):t.noexp?"x"+t.mult:left>0?fmt(left):"finalizando…");
   x.font="bold 11px system-ui";const right=xe>W-150;x.textAlign=right?"right":"left";x.fillText(txt,xe+(right?-5:5),14+(i%3)*14);x.textAlign="left";
  });
 }
@@ -313,13 +464,19 @@ function updBar(c){
  const sp=c.current_spot!=null?c.current_spot:c.current_spot_display_value;
  if(tr&&en!=null)tr.px=+en;
  const p=+c.profit||0,pc=c.profit_percentage!=null?+c.profit_percentage:(c.buy_price?p/c.buy_price*100:0);
- $("ctl").innerHTML='<span style="display:inline;color:#ff6a00;font-size:14px">●</span> CONTRATO ABERTO';$("ctl").className="";
- $("c0").textContent=c.contract_type==="CALL"?"CALL ▲":c.contract_type==="PUT"?"PUT ▼":(c.contract_type||"—");
+ if(botOn&&!stopSent&&/^MULT/.test(c.contract_type||"")){const tot=stats.pl-startPl+p,L=num("sl"),W=num("sw");let why=null;
+  if(L>0&&tot<=-L)why="Stop Loss da sessão atingido ("+tot.toFixed(2)+")";else if(W>0&&tot>=W)why="Stop Win da sessão atingido (+"+tot.toFixed(2)+")";
+  if(why){stopSent=true;setBot(false,why);sendAcc({sell:c.contract_id,price:0});log("Fechando a operação aberta…","mu")}}
+ $("ctl").innerHTML='<span style="display:inline;color:#ff6a00;font-size:14px">●</span> CONTRATO ABERTO'+(tr?" · "+symName(tr.sym):"");$("ctl").className="";
+ $("c0").textContent=c.contract_type==="CALL"?"CALL ▲":c.contract_type==="PUT"?"PUT ▼":c.contract_type==="MULTUP"?"MULT ▲":c.contract_type==="MULTDOWN"?"MULT ▼":(c.contract_type||"—");
  $("c1").textContent=(+c.buy_price).toFixed(2)+" "+(c.currency||"");
  $("c2").textContent=en!=null?en:"—";$("c3").textContent=sp!=null?sp:"—";
  $("c4").textContent=(p>=0?"+":"")+p.toFixed(2)+" ("+(pc>=0?"+":"")+pc.toFixed(1)+"%)";$("c4").style.color=p<0?"#e10600":"#fff";
 }
 function clearBar(){$("ctl").textContent="Nenhum contrato aberto";$("ctl").className="mu";["c0","c1","c2","c3","c4","c5"].forEach(i=>$(i).textContent="—");$("c4").style.color="#fff"}
-setInterval(()=>{const t=trades[trades.length-1];if(t&&openIds.size){const l=Math.max(0,t.exp-Date.now()/1000);$("c5").textContent=String(Math.floor(l/60)).padStart(2,"0")+":"+String(Math.floor(l%60)).padStart(2,"0")}},1000);
+setInterval(()=>{const t=trades[trades.length-1];if(t&&openIds.size&&t.noexp){$("c5").textContent="sem prazo"}else if(t&&openIds.size){const l=Math.max(0,t.exp-Date.now()/1000);$("c5").textContent=String(Math.floor(l/60)).padStart(2,"0")+":"+String(Math.floor(l%60)).padStart(2,"0")}},1000);
+$("ctype").onchange=()=>{$("mrow").style.display=ctm()?"flex":"none"};
+$("r21").onchange=()=>{$("mtp").disabled=$("r21").checked};
+setInterval(renderMkt,5000);
 init();
 </script></body></html>
