@@ -127,6 +127,7 @@ canvas{width:100%;height:340px;display:block;background:#060a12;border-radius:10
   </div>
   <div class="grid2b">
    <div class="card"><h2>Controle</h2><div id="stline" class="mu" style="margin-bottom:10px;font-family:ui-monospace,Menlo,Consolas,monospace;letter-spacing:.14em">● AGUARDANDO</div><button id="pw" class="p" style="width:100%;padding:14px;font-size:15px">▶ Ligar bot</button>
+    <button id="rst" style="width:100%;margin-top:8px;padding:11px">↺ Resetar sessão (zerar histórico)</button>
     <div class="row" style="margin-top:14px;margin-bottom:0;gap:14px">
      <div class="stp"><span>Stop Loss</span><button data-st="sl" data-d="-1">−</button><input id="sl2" type="number" min="0"><button data-st="sl" data-d="1">+</button></div>
      <div class="stp"><span>Stop Win</span><button data-st="sw" data-d="-1">−</button><input id="sw2" type="number" min="0"><button data-st="sw" data-d="1">+</button></div></div>
@@ -874,5 +875,17 @@ function saveRun(){try{localStorage.setItem("orby_run",JSON.stringify({botOn,sta
 (function(){try{const r=JSON.parse(localStorage.getItem("orby_run")||"null");if(!r)return;Object.assign(stats,r.stats||{});startPl=r.startPl||0;lossAcc=r.lossAcc||0;nextStake=r.nextStake||0;(r.openIds||[]).forEach(id=>openIds.add(id));if(openIds.size){busy=true;busyAt=Date.now()}
  $("s2").textContent=stats.n;$("s3").textContent=stats.w;$("s4").textContent=stats.l;$("s5").textContent=stats.pl.toFixed(2);$("s5").className=stats.pl>=0?"up":"dn";showNext();if(r.botOn)resumePending=true}catch(e){}})();
 if(document.addEventListener){document.addEventListener("change",saveCfg);document.addEventListener("input",saveCfg)}
+
+// ---- Resetar sessão: zera PNL, wins, losses, operações, Sorosgale e histórico ----
+function resetSession(){
+ const ask=t=>typeof confirm==="function"?confirm(t):true;
+ if(openIds.size&&!ask("Há uma operação aberta. Ela continua na Deriv, mas o painel deixará de acompanhá-la. Resetar mesmo assim?"))return;
+ if(!openIds.size&&!ask("Zerar o PNL da sessão, os wins, os losses e o histórico? O bot continua ligado ou desligado como está."))return;
+ stats.n=0;stats.w=0;stats.l=0;stats.pl=0;startPl=0;lossAcc=0;busy=false;stopSent=false;openIds.clear();trades=[];cand.length=0;lastSigM={};
+ resetStake();
+ $("s2").textContent="0";$("s3").textContent="0";$("s4").textContent="0";$("s5").textContent="0.00";$("s5").className="";$("s8").textContent="—";
+ $("log").innerHTML="";clearBar();draw();saveRun();
+ log("Sessão resetada: PNL, wins, losses e histórico zerados"+(botOn?". O bot continua ligado com a sessão nova.":". Toque em Ligar bot para começar novas operações."),"up")}
+$("rst").onclick=resetSession;
 init();
 </script></body></html>
