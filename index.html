@@ -59,6 +59,11 @@ canvas{width:100%;height:340px;display:block;background:#060a12;border-radius:10
 .mc button{margin-top:8px;font-size:12px;padding:4px 10px}.mc small{color:var(--mu);font-size:11px;display:block;margin-top:6px}
 .stp{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--mu)}.stp input{width:64px;text-align:center}.stp button{padding:6px 10px}
 .grid2b{display:grid;gap:12px;grid-template-columns:1fr}@media(min-width:900px){.grid2b{grid-template-columns:1fr 1fr}}
+.chs{display:flex;flex-wrap:wrap;gap:8px}.chp{padding:7px 12px;font-size:13px}.chp.on{border-color:var(--ac);background:#0c2418;color:var(--ac)}
+.bt-t{width:100%;border-collapse:collapse;font-size:13px}.bt-t th{color:var(--mu);font-weight:500;font-size:11px;letter-spacing:.1em;text-transform:uppercase;text-align:left;padding:6px 8px}
+.bt-t td{padding:7px 8px;border-top:1px solid var(--bd);font-family:ui-monospace,Menlo,Consolas,monospace}.bt-w{overflow-x:auto}
+.vd{border-radius:14px;padding:14px 16px;margin-bottom:12px;border:1px solid}.vd.g{background:#0c2418;border-color:#1f6b46}.vd.w{background:#241c08;border-color:#6b5316}.vd.b{background:#2a0d12;border-color:#6b1f2a}
+.vd b{font-size:20px;display:block;margin-bottom:4px}.kp4{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:12px}@media(min-width:700px){.kp4{grid-template-columns:repeat(4,1fr)}}
 </style></head><body>
 <aside id="side">
  <div class="logo">ORBY <span>BOTS</span></div>
@@ -66,6 +71,7 @@ canvas{width:100%;height:340px;display:block;background:#060a12;border-radius:10
  <button class="nav" data-p="dash" data-t="Terminal">📊 Terminal</button>
  <button class="nav" data-p="bots" data-t="Bots">🤖 Bots</button>
  <button class="nav" data-p="mkt" data-t="Mercados">🌐 Mercados</button>
+ <button class="nav" data-p="bt" data-t="Backtest">🧪 Backtest</button>
  <button class="nav" data-p="gest" data-t="Gestão de banca">💰 Gestão de banca</button>
  <button class="nav" data-p="hist" data-t="Histórico">📜 Histórico</button>
  <button class="nav" data-p="conf" data-t="Conexão">🔌 Conexão</button>
@@ -149,6 +155,30 @@ canvas{width:100%;height:340px;display:block;background:#060a12;border-radius:10
    <div class="bot"><div>Índices sintéticos<small>Volatility 10/25/50/75/100 (24h, aleatórios)</small></div><input type="checkbox" id="g_syn"></div>
   </div>
   <div class="card"><h2>Status dos mercados</h2><div id="mktlist" class="mu" style="font-size:13px"></div></div></section>
+
+ <section class="page" id="p-bt">
+  <div class="eyebrow">Teste com dados históricos</div><div style="font-size:24px;font-weight:700;margin:4px 0 14px">Backtest de Estratégias</div>
+  <div class="grid2">
+   <div class="card"><h2>Estratégia</h2><select id="bt_k" style="width:100%"></select>
+    <h2 style="margin-top:16px">Mercado e período</h2><select id="bt_s" style="width:100%"></select>
+    <div class="mu" style="font-size:12px;margin:10px 0 6px">Quantidade de candles</div><div id="bt_n" class="chs"></div>
+    <div class="mu" style="font-size:12px;margin:10px 0 6px">Timeframe</div><div id="bt_g" class="chs"></div>
+    <h2 style="margin-top:16px">Contrato (Rise/Fall)</h2><div class="mu" style="font-size:12px;margin-bottom:6px">Duração</div><div id="bt_d" class="chs"></div>
+    <div class="mu" id="bt_res" style="font-size:12px;margin-top:8px"></div>
+    <div class="row" style="margin-top:10px"><label>Payout (%) <input id="bt_p" type="number" value="92" min="1" max="200" style="width:80px"></label>
+    <label>Execução <select id="bt_e"><option value="l">Live-like</option><option value="c">Conservador</option></select></label></div>
+    <div class="mu" style="font-size:12px">Live-like: entra na abertura do candle seguinte ao sinal. Conservador: atrasa a entrada em 1 candle e reduz o payout em 2 pontos. Confira o payout real do ativo na Deriv.</div>
+    <h2 style="margin-top:16px">Banca</h2>
+    <div class="row"><label>Stake inicial <input id="bt_st" type="number" value="1" min="0.35" step="0.5" style="width:80px"></label><label>Sizing <select id="bt_z"><option value="f">Fixo</option><option value="s">Sorosgale</option></select></label></div>
+    <div class="row"><label>Stop Loss <input id="bt_sl" type="number" value="20" style="width:80px"></label><label>Stop Win <input id="bt_sw" type="number" value="50" style="width:80px"></label><label>Aplicar stops <select id="bt_ap"><option value="n">Não</option><option value="s">Sim (por dia)</option></select></label></div>
+    <div class="mu" style="font-size:12px;margin-bottom:12px">Usa os mesmos filtros do SMC marcados na aba Bots, exceto o tempo gráfico maior, que não é testado.</div>
+    <button id="bt_all" class="p" style="width:100%;padding:12px;margin-bottom:8px">Rodar todos os mercados</button>
+    <button id="bt_cmp" style="width:100%;padding:12px;margin-bottom:8px">Comparar estratégias</button>
+    <button id="bt_one" style="width:100%;padding:12px">Testar mercado selecionado</button>
+    <div id="bt_msg" class="mu" style="font-size:13px;margin-top:10px"></div></div>
+   <div id="bt_out"><div class="card mu">Escolha a estratégia, o mercado e o período e toque em um dos botões. Os resultados aparecem aqui.</div></div>
+  </div>
+ </section>
 
  <section class="page" id="p-gest"><div class="card" style="border-color:#1f6b46"><div class="eyebrow">Estratégia selecionada</div><div id="gsel" style="font-size:18px;font-weight:700;margin-top:4px">—</div></div>
  <div class="card"><h2>Execução e gestão</h2>
@@ -249,10 +279,10 @@ const UNI=[["frxEURUSD","EUR/USD","fx"],["frxGBPUSD","GBP/USD","fx"],["frxUSDJPY
 let hq=[],pumpOn=false,qDelay=1000,qPause=0,rlLogged=false;
 function qsend(m){hq.push(m);if(!pumpOn){pumpOn=true;setTimeout(pump,0)}}
 function pump(){if(!hq.length){pumpOn=false;return}const w=qPause-Date.now();if(w>0){setTimeout(pump,w);return}sendPub(hq.shift());setTimeout(pump,qDelay)}
-function rlRetry(e){const r=reqMap[e.req_id];if(!r||r.sym!==e.ticks_history)return;hq.unshift(e);qPause=Date.now()+8000;qDelay=Math.min(qDelay+400,3000);
+function rlRetry(e){const r=reqMap[e.req_id];if((!r||r.sym!==e.ticks_history)&&!btPend[e.req_id])return;hq.unshift(e);qPause=Date.now()+8000;qDelay=Math.min(qDelay+400,3000);
  if(!rlLogged){rlLogged=true;log("A Deriv limitou as requisições de histórico. Reduzindo o ritmo e tentando de novo…","mu")}
  if(!pumpOn){pumpOn=true;setTimeout(pump,0)}}
-let symsLoaded=false,M={},reqMap={},subGen=0,started=false,cand=[],candTimer=null;const sigSeen=new Set(),WGT={smcf:3,pbe:2,brk:1,pb:1,smc:1,sr:2,fib:2};
+let btPend={},btId=8000,symsLoaded=false,M={},reqMap={},subGen=0,started=false,cand=[],candTimer=null;const sigSeen=new Set(),WGT={smcf:3,pbe:2,brk:1,pb:1,smc:1,sr:2,fib:2};
 const symName=id=>(UNI.find(u=>u[0]===id)||[0,id])[1];
 function connectPub(){pub=new WebSocket("wss://api.derivws.com/trading/v1/options/ws/public");
  pub.onopen=requestSymbols;pub.onclose=()=>{started=false;log("Conexão de mercado caiu. Reconectando…","mu");setTimeout(connectPub,3000)};pub.onmessage=e=>handle(JSON.parse(e.data))}
@@ -297,13 +327,14 @@ function handle(m){
  if((m.msg_type==="ping"&&!m.error)||m.msg_type==="forget_all")return;if(m.error&&m.echo_req&&m.echo_req.active_symbols)return;
  if(m.error&&/already subscribed/i.test(m.error.message||"")&&m.echo_req&&m.echo_req.ticks_history){const e=Object.assign({},m.echo_req);delete e.subscribe;qsend(e);return}
  if(m.error&&/rate limit/i.test(m.error.message||"")&&m.echo_req&&m.echo_req.ticks_history){rlRetry(m.echo_req);return}
+ if(m.error&&m.echo_req&&btPend[m.echo_req.req_id]){const f=btPend[m.echo_req.req_id];delete btPend[m.echo_req.req_id];f(null);return}
  if(m.error){if(m.echo_req&&(m.echo_req.proposal||m.echo_req.buy))busy=false;log("Erro: "+m.error.message,"dn");return}
  if(m.msg_type==="authorize"){acctId=m.authorize.loginid;cur=m.authorize.currency;
   const demo=m.authorize.is_virtual;$("acct").textContent=(demo?"DEMO ":"REAL ")+acctId;$("acct").className="badge "+(demo?"demo":"real");
   $("login").style.display="none";$("logout").style.display="";sendAcc({balance:1,subscribe:1});log("Conectado: "+acctId+(demo?" (demo)":" (REAL)"))}
  else if(m.msg_type==="balance"){cur=m.balance.currency;$("bal").textContent=m.balance.balance.toFixed(2)+" "+m.balance.currency;$("s1b").textContent=m.balance.balance.toFixed(2)}
  else if(m.msg_type==="active_symbols"){reconcile(m.active_symbols||[]);symsLoaded=true;if(!started)startScan();else{buildSymSelect();renderMkt()}}
- else if(m.msg_type==="candles"){const arr=m.candles.map(c=>({t:c.epoch,o:+c.open,h:+c.high,l:+c.low,c:+c.close})),r=resolve(m);if(!r)return;const d=M[r.sym];if(!d)return;
+ else if(m.msg_type==="candles"){const arr=m.candles.map(c=>({t:c.epoch,o:+c.open,h:+c.high,l:+c.low,c:+c.close}));{const rid=m.echo_req&&m.echo_req.req_id;if(btPend[rid]){const f=btPend[rid];delete btPend[rid];f(arr);return}}const r=resolve(m);if(!r)return;const d=M[r.sym];if(!d)return;
   if(r.kind==="htf")d.h=d.h.length?mergeC(d.h,arr):arr;
   else if(r.kind==="older"){if(d.c.length)d.c=arr.filter(c=>c.t<d.c[0].t).concat(d.c)}
   else{d.c=d.c.length?mergeC(d.c,arr):arr;if(arr.length&&d.c.length<230&&!d.older){d.older=true;qsend({ticks_history:r.sym,count:500,end:d.c[0].t-1,style:"candles",granularity:+$("gran").value,req_id:1002+d.n*3})}}
@@ -442,15 +473,15 @@ function liveTouch(kind){
   for(const L of srLevels(i)){if(L.n!==2)continue;
    let fresh=true;for(let q=i-2;q<=i;q++){const x=candles[q];if(tr===1?x.l<=L.p+L.tol:x.h>=L.p-L.tol){fresh=false;break}}
    if(!fresh)continue;
-   if(tr===1&&cur.l<=L.p+L.tol&&cur.l>=L.p-2*a&&candles[i].c>L.p){lastWhy="Suporte "+L.p.toFixed(4)+" · 3º toque · a favor da alta";return{dir:"CALL",key:"sr"+L.p.toFixed(5)}}
-   if(tr===-1&&cur.h>=L.p-L.tol&&cur.h<=L.p+2*a&&candles[i].c<L.p){lastWhy="Resistência "+L.p.toFixed(4)+" · 3º toque · a favor da baixa";return{dir:"PUT",key:"sr"+L.p.toFixed(5)}}
+   if(tr===1&&cur.l<=L.p+L.tol&&cur.l>=L.p-2*a&&candles[i].c>L.p){lastWhy="Suporte "+L.p.toFixed(4)+" · 3º toque · a favor da alta";return{dir:"CALL",px:L.p,trig:L.p+L.tol,key:"sr"+L.p.toFixed(5)}}
+   if(tr===-1&&cur.h>=L.p-L.tol&&cur.h<=L.p+2*a&&candles[i].c<L.p){lastWhy="Resistência "+L.p.toFixed(4)+" · 3º toque · a favor da baixa";return{dir:"PUT",px:L.p,trig:L.p-L.tol,key:"sr"+L.p.toFixed(5)}}
   }return null}
  if(kind==="fib"){const g=fibLeg(i);if(!g)return null;if(g.up?tr!==1:tr!==-1)return null;
   const f=g.up?g.p1.p-0.618*g.R:g.p1.p+0.618*g.R,band=0.04*g.R,deep=g.up?g.p1.p-0.786*g.R:g.p1.p+0.786*g.R;
   if(g.up?cur.h>g.p1.p:cur.l<g.p1.p)return null;
   for(let q=g.p1.i+1;q<=i;q++){const x=candles[q];if(g.up?x.l<=f+band:x.h>=f-band)return null}
-  if(g.up&&cur.l<=f+band&&cur.l>deep-band){lastWhy="Fib 0,618 ▲ ("+f.toFixed(4)+") · 1º toque · a favor da alta";return{dir:"CALL",key:"fib"+g.p1.i}}
-  if(!g.up&&cur.h>=f-band&&cur.h<deep+band){lastWhy="Fib 0,618 ▼ ("+f.toFixed(4)+") · 1º toque · a favor da baixa";return{dir:"PUT",key:"fib"+g.p1.i}}
+  if(g.up&&cur.l<=f+band&&cur.l>deep-band){lastWhy="Fib 0,618 ▲ ("+f.toFixed(4)+") · 1º toque · a favor da alta";return{dir:"CALL",px:f,trig:f+band,key:"fib"+g.p1.i}}
+  if(!g.up&&cur.h>=f-band&&cur.h<deep+band){lastWhy="Fib 0,618 ▼ ("+f.toFixed(4)+") · 1º toque · a favor da baixa";return{dir:"PUT",px:f,trig:f-band,key:"fib"+g.p1.i}}
   return null}
  return null}
 function liveOn(sym){
@@ -614,6 +645,88 @@ document.querySelectorAll("[data-bot]").forEach(e=>e.onchange=syncEst);
 $("pw2").onclick=()=>{if(!botOn)setBot(true);goPage("dash")};
 const wsChk=()=>{const ok=pub&&pub.readyState===1;$("wsok").textContent=ok?"● WS·OK":"● WS·OFF";$("wsok").style.color=ok?"#6ef0a0":"#ff5c6c"};
 setInterval(wsChk,2000);syncEst();
+// ================= BACKTEST =================
+const BK=["smcf","sr","fib","pbe","brk","pb","smc"],TOUCH={sr:1,fib:1},cfg={n:1000,g:60,d:5};
+$("bt_k").innerHTML=BK.map(k=>'<option value="'+k+'">'+NAMES[k]+'</option>').join("");
+function fillBtSyms(){const cur=$("bt_s").value||"frxEURUSD";$("bt_s").innerHTML=UNI.filter(u=>u[3]!==false).map(u=>'<option value="'+u[0]+'">'+u[1]+'</option>').join("");if([...$("bt_s").options].some(o=>o.value===cur))$("bt_s").value=cur}
+fillBtSyms();setInterval(fillBtSyms,15000);
+function chips(id,opts,key){const el=$(id);el.innerHTML=opts.map(o=>'<button class="chp'+(cfg[key]===o[0]?' on':'')+'" data-v="'+o[0]+'">'+o[1]+'</button>').join("");
+ el.onclick=e=>{const b=e.target.closest&&e.target.closest("[data-v]");if(!b)return;cfg[key]=+b.dataset.v;chips(id,opts,key);btRes()}}
+function btRes(){const n=Math.max(1,Math.ceil(cfg.d*60/cfg.g));$("bt_res").textContent="Resolução: "+n+" candle"+(n>1?"s":"")+" no timeframe escolhido (duração "+cfg.d+" min)"}
+chips("bt_n",[[500,"500 candles"],[1000,"1.000 candles"],[2000,"2.000 candles"],[5000,"5.000 candles"]],"n");
+chips("bt_g",[[60,"1 min"],[120,"2 min"],[300,"5 min"],[600,"10 min"],[900,"15 min"],[1800,"30 min"],[3600,"1 hora"]],"g");
+chips("bt_d",[[1,"1 min"],[2,"2 min"],[5,"5 min"],[10,"10 min"],[15,"15 min"],[30,"30 min"],[60,"1 hora"]],"d");btRes();
+function btFetch(sym,gran,count){return new Promise(res=>{const id=++btId;btPend[id]=res;qsend({ticks_history:sym,adjust_start_time:1,count,end:"latest",style:"candles",granularity:gran,req_id:id});setTimeout(()=>{if(btPend[id]){delete btPend[id];res(null)}},45000)})}
+const tick=()=>new Promise(r=>setTimeout(r,15));
+function btOpt(){return{n:Math.max(1,Math.ceil(cfg.d*60/cfg.g)),gran:cfg.g,pay:(+$("bt_p").value||92)-($("bt_e").value==="c"?2:0),cons:$("bt_e").value==="c",stake:Math.max(0.35,+$("bt_st").value||1),soros:$("bt_z").value==="s",sl:+$("bt_sl").value||0,sw:+$("bt_sw").value||0,stops:$("bt_ap").value==="s"}}
+// simula uma estratégia sobre o histórico A (candles fechados)
+function runBT(A,k,o){
+ const sc=candles,sh=htf,sg=htfG,tr=[];candles=A;htf=[];htfG=0;
+ try{
+  let free=0,day=-1,spl=0,stopped=false,loss=0,next=o.stake;const START=220,n=o.n;
+  for(let i=START;i<A.length-n-3;i++){
+   if(i<free)continue;
+   const dy=Math.floor(A[i].t/86400);if(dy!==day){day=dy;spl=0;stopped=false;loss=0;next=o.stake}
+   if(stopped)continue;
+   let dir=null,en=0,ex=0,ti=i,exi=0;
+   if(TOUCH[k]){const t=i;candles=A.slice(0,t+1);let r=null;try{r=liveTouch(k)}catch(e){}
+    if(r&&r.trig!=null){const a0=A[t],tg=r.trig;candles=A.slice(0,t);candles.push({t:a0.t,o:a0.o,h:Math.max(a0.o,tg),l:Math.min(a0.o,tg),c:tg});let r2=null;try{r2=liveTouch(k)}catch(e){}r=(r2&&r2.dir===r.dir)?r2:null}
+    candles=A;if(!r)continue;dir=r.dir;
+    if(o.cons){en=A[t].c;exi=t+n}else{en=r.trig;exi=t+n-1}ex=A[exi].c;ti=t}
+   else{let sgn=null;try{sgn=S[k](i)}catch(e){}if(!sgn)continue;dir=sgn;
+    if(o.cons){en=A[i+1].c;exi=i+1+n}else{en=A[i+1].o;exi=i+n}ex=A[exi].c;ti=i+1}
+   if(exi>=A.length)break;
+   const win=dir==="CALL"?ex>en:ex<en,stake=o.soros?next:o.stake,p=win?stake*o.pay/100:-stake;
+   tr.push({ti:A[ti].t,te:A[exi].t+o.gran,dir,en,ex,stake,r:p});
+   free=exi+1;spl+=p;
+   if(o.soros){if(p<0)loss+=-p;else if(p>0&&loss>0)loss-=p;
+    if(loss>0.001){if(p>0)next=stake+p;else next=loss/2}else{loss=0;next=o.stake}next=Math.max(0.35,Math.round(next*100)/100)}
+   if(o.stops&&((o.sl>0&&spl<=-o.sl)||(o.sw>0&&spl>=o.sw)))stopped=true;
+  }
+ }finally{candles=sc;htf=sh;htfG=sg}
+ return tr}
+function btStats(tr,o){const ops=tr.length,w=tr.filter(t=>t.r>0).length,pnl=tr.reduce((a,t)=>a+t.r,0),be=1/(1+o.pay/100);
+ let eq=0,pk=0,dd=0,cw=0,cl=0,mw=0,ml=0,gw=0,gl=0;const curve=[0];
+ tr.forEach(t=>{eq+=t.r;curve.push(eq);pk=Math.max(pk,eq);dd=Math.max(dd,pk-eq);if(t.r>0){cw++;cl=0;gw+=t.r}else{cl++;cw=0;gl+=-t.r}mw=Math.max(mw,cw);ml=Math.max(ml,cl)});
+ const p=ops?w/ops:0,z=1.96,lo=ops?(p+z*z/(2*ops)-z*Math.sqrt(p*(1-p)/ops+z*z/(4*ops*ops)))/(1+z*z/ops):0;
+ return{ops,w,l:ops-w,wr:p,pnl,exp:ops?pnl/ops:0,dd,mw,ml,pf:gl?gw/gl:(gw?99:0),be,lo,curve}}
+function btVerdict(st){
+ if(st.ops<30)return["g0","Amostra pequena","Menos de 30 operações: o resultado ainda não diz nada. Aumente o período ou escolha outros mercados.","w"];
+ if(st.wr<st.be||st.pnl<=0)return["g1","Não recomendado","O win rate ficou abaixo do ponto de equilíbrio, ou o resultado foi negativo, neste período.","b"];
+ if(st.lo>st.be)return["g2","Promissor","O win rate ficou acima do equilíbrio com margem estatística. Ainda precisa de validação em outro período e na conta demo.","g"];
+ return["g3","Precisa validar","O resultado ficou perto do ponto de equilíbrio ou com pouca margem. Teste outro período ou outros mercados.","w"]}
+const f2=x=>(x>=0?"+":"")+x.toFixed(2),pc=x=>(x*100).toFixed(1)+"%",clr=x=>x>=0?"#6ef0a0":"#ff5c6c";
+const fdt=t=>new Date(t*1000).toISOString().slice(5,16).replace("T"," ");
+function spark(c){if(c.length<2)return"";const mx=Math.max(...c),mn=Math.min(...c),r=(mx-mn)||1,pts=c.map((v,i)=>(i/(c.length-1)*300).toFixed(1)+","+(60-(v-mn)/r*56-2).toFixed(1)).join(" ");
+ return'<svg viewBox="0 0 300 60" width="100%" style="display:block"><polyline points="'+pts+'" fill="none" stroke="'+clr(c[c.length-1])+'" stroke-width="2"/></svg>'}
+function kpi4(st,o){return'<div class="kp4"><div class="kpi"><span>Expectativa/op</span><b style="color:'+clr(st.exp)+'">'+f2(st.exp)+'</b></div><div class="kpi"><span>Win rate</span><b>'+pc(st.wr)+'</b><small class="mu">equilíbrio '+pc(st.be)+'</small></div><div class="kpi"><span>Resultado total</span><b style="color:'+clr(st.pnl)+'">'+f2(st.pnl)+'</b></div><div class="kpi"><span>Operações</span><b>'+st.ops+'</b><small class="mu">'+st.w+'W / '+st.l+'L</small></div>'
+ +'<div class="kpi"><span>Maior sequência</span><b>'+st.mw+'W / '+st.ml+'L</b></div><div class="kpi"><span>Drawdown máx.</span><b style="color:#ff5c6c">'+st.dd.toFixed(2)+'</b></div><div class="kpi"><span>Fator de lucro</span><b>'+st.pf.toFixed(2)+'</b></div><div class="kpi"><span>Stake</span><b>'+o.stake.toFixed(2)+'</b><small class="mu">'+(o.soros?"Sorosgale":"Fixo")+'</small></div></div>'}
+const vbox=v=>'<div class="vd '+v[3]+'"><b>'+v[1]+'</b><span class="mu">'+v[2]+'</span></div>';
+const disc='<div class="mu" style="font-size:12px;margin-top:10px">Backtest usa dados passados e não garante resultado futuro. Não testa o filtro de tempo gráfico maior, não inclui o spread e assume o payout informado. Use como triagem, não como promessa de lucro.</div>';
+function showOne(sym,k,tr,o,tf){const st=btStats(tr,o),v=btVerdict(st);
+ const rows=tr.slice(-300).map((t,i)=>'<tr><td>'+(tr.length-Math.min(300,tr.length)+i+1)+'</td><td>'+fdt(t.ti)+'</td><td>'+fdt(t.te)+'</td><td style="color:'+(t.dir==="CALL"?"#6ef0a0":"#ff5c6c")+'">'+(t.dir==="CALL"?"CALL ▲":"PUT ▼")+'</td><td>'+t.en.toFixed(dig(t.en))+'</td><td>'+t.ex.toFixed(dig(t.ex))+'</td><td>'+t.stake.toFixed(2)+'</td><td style="color:'+clr(t.r)+'">'+f2(t.r)+'</td></tr>').join("");
+ $("bt_out").innerHTML='<div class="card"><div class="eyebrow">'+NAMES[k]+' · '+symName(sym)+' · '+tf+'</div>'+vbox(v)+kpi4(st,o)+'<h2>Curva de resultado</h2>'+spark(st.curve)+disc+'</div><div class="card"><h2>Log detalhado ('+Math.min(300,tr.length)+' de '+tr.length+')</h2><div class="bt-w"><table class="bt-t"><tr><th>#</th><th>Entrada</th><th>Saída</th><th>Dir</th><th>Preço ent.</th><th>Preço saída</th><th>Stake</th><th>Resultado</th></tr>'+rows+'</table></div></div>'}
+function showTable(title,head,rows){$("bt_out").innerHTML='<div class="card"><h2>'+title+'</h2><div class="bt-w"><table class="bt-t"><tr>'+head.map(h=>'<th>'+h+'</th>').join("")+'</tr>'+rows+'</table></div>'+disc+'</div>'}
+const msg=t=>{$("bt_msg").textContent=t};let btBusy=false;
+async function getHist(sym){const a=await btFetch(sym,cfg.g,cfg.n);if(!a||a.length<260){return null}return a.map(c=>({t:c.t,o:c.o,h:c.h,l:c.l,c:c.c}))}
+function lock(on){btBusy=on;["bt_all","bt_cmp","bt_one"].forEach(i=>$(i).disabled=on)}
+const tfName=()=>({60:"1 min",120:"2 min",300:"5 min",600:"10 min",900:"15 min",1800:"30 min",3600:"1 hora"}[cfg.g]);
+$("bt_one").onclick=async()=>{if(btBusy)return;lock(true);try{const sym=$("bt_s").value,k=$("bt_k").value,o=btOpt();msg("Baixando histórico de "+symName(sym)+"…");
+ const A=await getHist(sym);if(!A){msg("Não foi possível baixar histórico suficiente (mínimo 260 candles). Pode ser limite da Deriv ou mercado fechado. Tente de novo em instantes.");return}
+ msg("Simulando…");await tick();const tr=runBT(A,k,o);showOne(sym,k,tr,o,tfName());msg("Pronto: "+A.length+" candles analisados.")}finally{lock(false)}};
+$("bt_cmp").onclick=async()=>{if(btBusy)return;lock(true);try{const sym=$("bt_s").value,o=btOpt();msg("Baixando histórico de "+symName(sym)+"…");
+ const A=await getHist(sym);if(!A){msg("Não foi possível baixar histórico suficiente. Tente de novo em instantes.");return}
+ const res=[];for(const k of BK){msg("Testando "+NAMES[k]+"…");await tick();const tr=runBT(A,k,o);res.push([k,btStats(tr,o)])}
+ res.sort((a,b)=>b[1].pnl-a[1].pnl);
+ showTable("Comparação de estratégias · "+symName(sym)+" · "+tfName(),["Estratégia","Ops","Win rate","Resultado","Expect./op","Drawdown","Veredito"],res.map(([k,st])=>{const v=btVerdict(st);return'<tr><td style="font-family:inherit">'+NAMES[k]+'</td><td>'+st.ops+'</td><td>'+pc(st.wr)+'</td><td style="color:'+clr(st.pnl)+'">'+f2(st.pnl)+'</td><td style="color:'+clr(st.exp)+'">'+f2(st.exp)+'</td><td>'+st.dd.toFixed(2)+'</td><td style="font-family:inherit">'+v[1]+'</td></tr>'}).join(""));
+ msg("Pronto: "+A.length+" candles analisados.")}finally{lock(false)}};
+$("bt_all").onclick=async()=>{if(btBusy)return;lock(true);try{const k=$("bt_k").value,o=btOpt(),syms=UNI.filter(u=>u[3]!==false&&$("g_"+u[2])&&$("g_"+u[2]).checked).map(u=>u[0]),out=[];
+ if(!syms.length){msg("Marque ao menos um grupo de mercados na aba Mercados.");return}
+ for(let i=0;i<syms.length;i++){msg("Testando "+symName(syms[i])+" ("+(i+1)+"/"+syms.length+")…");const A=await getHist(syms[i]);if(!A){out.push([syms[i],null]);continue}await tick();out.push([syms[i],btStats(runBT(A,k,o),o)])}
+ out.sort((a,b)=>(b[1]?b[1].pnl:-1e9)-(a[1]?a[1].pnl:-1e9));
+ showTable("Mercados para "+NAMES[k]+" · "+tfName(),["Mercado","Ops","Win rate","Resultado","Expect./op","Drawdown","Veredito"],out.map(([sy,st])=>{if(!st)return'<tr><td style="font-family:inherit">'+symName(sy)+'</td><td colspan="6" class="mu" style="font-family:inherit">histórico indisponível</td></tr>';const v=btVerdict(st);return'<tr><td style="font-family:inherit">'+symName(sy)+'</td><td>'+st.ops+'</td><td>'+pc(st.wr)+'</td><td style="color:'+clr(st.pnl)+'">'+f2(st.pnl)+'</td><td style="color:'+clr(st.exp)+'">'+f2(st.exp)+'</td><td>'+st.dd.toFixed(2)+'</td><td style="font-family:inherit">'+v[1]+'</td></tr>'}).join(""));
+ msg("Pronto: "+out.length+" mercados testados.")}finally{lock(false)}};
+
 // ---- Lista de mercados (lateral) e escaneamento
 const dig=p=>p>=100?2:p>=20?3:5;
 function sInfo(sym){const d=M[sym];if(!d||d.c.length<205)return{tr:0,f:0};const sc=candles;candles=d.c;
