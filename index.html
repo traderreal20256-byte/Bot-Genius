@@ -612,6 +612,9 @@ S.fim=i=>{if(i<60)return null;const g=fimCh(i);if(!g||i-g.i1>80)return null;cons
   if(c.c>g.zn[1]&&p.c<=g.zn[1]){lastWhy=base+"zona neutra rompida para cima: reversão";return"CALL"}
  }
  return null};
+function fimTxt(){if(!onBot("fim"))return"";if(!fimG)return"<br>Fimathe: sem canal de referência válido agora";const g=fimG,i=candles.length-2,c=candles[i].c,fx=x=>x.toFixed(x>=100?2:x>=20?3:5),
+ pos=c>g.top?"acima do canal":c<g.bot?"abaixo do canal":"dentro do canal ("+Math.round((c-g.bot)/g.R*100)+"% da altura)";
+ return"<br>Fimathe: canal "+fx(g.bot)+"–"+fx(g.top)+" ("+(g.up?"alta":"baixa")+"), zona neutra "+fx(g.zn[0])+"–"+fx(g.zn[1])+" · preço "+pos}
 function smcTxt(){const i=candles.length-2;if(i<60||!htf.length||!htf2.length)return"<br>SMC: aguardando os candles de H1 e M15 carregarem";
  const T=candles[i].t+gOf(),jc=closedUpTo(htf2,htf2G,T),b=withArr(htf2,()=>h1Bias(jc)),e=smcEv;
  return"<br>H1: "+(b===1?"alta (HH + HL)":b===-1?"baixa (LL + LH)":"sem estrutura clara, o SMC não opera")+(e?" · M5: "+e.type+(e.d===1?" ▲":" ▼")+" há "+(i-e.j)+" velas":" · M5: sem CHoCH/BOS recente")}
@@ -680,7 +683,7 @@ function analyse(){smcEv=candles.length>30?smcScan(candles.length-2):null;
  const i=candles.length-2;if(i<200){$("ana").textContent="Carregando histórico ("+candles.length+"/200 velas mínimas)…";return}
  const t=trend(i),c=candles[i],a=sma(20,i),b=sma(99,i),d=sma(200,i);
  const tx=t===1?'<b class="up">Tendência de alta</b> (20 > 99 > 200)':t===-1?'<b class="dn">Tendência de baixa</b> (20 < 99 < 200)':'<b>Sem tendência clara</b> (médias cruzadas)';
- $("ana").innerHTML=tx+"<br>Fechamento "+c.c.toFixed(4)+" · SMA20 "+a.toFixed(4)+" · SMA99 "+b.toFixed(4)+" · SMA200 "+d.toFixed(4)+"<br>Preço "+(c.c>a?"acima":"abaixo")+" da SMA20 · distância "+(Math.abs(c.c-a)/a*100).toFixed(3)+"%"+smcTxt();
+ $("ana").innerHTML=tx+"<br>Fechamento "+c.c.toFixed(4)+" · SMA20 "+a.toFixed(4)+" · SMA99 "+b.toFixed(4)+" · SMA200 "+d.toFixed(4)+"<br>Preço "+(c.c>a?"acima":"abaixo")+" da SMA20 · distância "+(Math.abs(c.c-a)/a*100).toFixed(3)+"%"+smcTxt()+fimTxt();
 }
 
 // ---- Gráfico ----
@@ -996,7 +999,7 @@ fillGrSyms();setInterval(fillGrSyms,15000);
 let gq=[],gqOn=false;
 function gOrder(o){gq.push(o);if(!gqOn){gqOn=true;setTimeout(gPump,0)}}
 function gPump(){const o=gq.shift();if(!o){gqOn=false;return}sendAcc(o);setTimeout(gPump,500)}
-function gOpen(k,side,px){const key=side+k;if(GR.pos[key])return;const L=GR.lines,up=side==="B",tgt=up?L[k+1]:L[k-1];if(tgt==null)return;
+function gOpen(k,side,px){const key=side+k;if(GR.pos[key])return;if(Object.keys(GR.pos).length>=GR.n)return;const L=GR.lines,up=side==="B",tgt=up?L[k+1]:L[k-1];if(tgt==null)return;
  const stake=Math.round(GR.inv/GR.n*100)/100,S=GR.tpslOn&&GR.slPx>0?GR.slPx:(up?GR.lo:GR.hi);
  if(up?(tgt<=px||px<=S):(tgt>=px||px>=S))return;
  const kk=stake*GR.mult;let tp=Math.max(0.01,Math.round(Math.abs(tgt-px)/px*kk*100)/100),sl=Math.min(Math.round(Math.abs(px-S)/px*kk*100)/100,Math.round(stake*0.9*100)/100);if(sl<0.01)return;
