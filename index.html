@@ -116,6 +116,7 @@ canvas{width:100%;height:340px;display:block;background:#060a12;border-radius:10
    <div><span>Spot atual</span><b id="c3">—</b></div>
    <div><span>Tempo</span><b id="c5">—</b></div>
    <div><span>P&amp;L atual</span><b id="c4">—</b></div>
+   <div><button id="closeNow" class="r" style="padding:10px 16px">✖ Fechar operação agora</button></div>
   </div>
   <div class="grid2">
    <div class="card">
@@ -129,6 +130,7 @@ canvas{width:100%;height:340px;display:block;background:#060a12;border-radius:10
   <div class="grid2b">
    <div class="card"><h2>Controle</h2><div id="stline" class="mu" style="margin-bottom:10px;font-family:ui-monospace,Menlo,Consolas,monospace;letter-spacing:.14em">● AGUARDANDO</div><button id="pw" class="p" style="width:100%;padding:14px;font-size:15px">▶ Ligar bot</button>
     <button id="rst" style="width:100%;margin-top:8px;padding:11px">↺ Resetar sessão (zerar histórico)</button>
+    <label class="tgl" style="margin-top:10px"><input type="checkbox" id="closeOnStop" checked> Fechar a operação aberta ao desligar o bot</label>
     <div class="row" style="margin-top:14px;margin-bottom:0;gap:14px">
      <div class="stp"><span>Stop Loss</span><button data-st="sl" data-d="-1">−</button><input id="sl2" type="number" min="0"><button data-st="sl" data-d="1">+</button></div>
      <div class="stp"><span>Stop Win</span><button data-st="sw" data-d="-1">−</button><input id="sw2" type="number" min="0"><button data-st="sw" data-d="1">+</button></div></div>
@@ -340,7 +342,7 @@ setInterval(()=>{sendPub({ping:1});sendAcc({ping:1})},15000);
 const UNI=[["frxEURUSD","EUR/USD","fx"],["frxGBPUSD","GBP/USD","fx"],["frxUSDJPY","USD/JPY","fx"],["frxAUDUSD","AUD/USD","fx"],["frxUSDCAD","USD/CAD","fx"],["frxUSDCHF","USD/CHF","fx"],["frxNZDUSD","NZD/USD","fx"],["frxEURJPY","EUR/JPY","fx"],["frxGBPJPY","GBP/JPY","fx"],["frxEURGBP","EUR/GBP","fx"],["frxAUDJPY","AUD/JPY","fx"],["frxEURAUD","EUR/AUD","fx"],
  ["frxXAUUSD","Ouro XAU/USD","xau"],["OTC_SPC","US 500","us"],["OTC_NDX","US Tech 100","us"],["OTC_DJI","Wall Street 30","us"],
  ["cryBTCUSD","BTC/USD","cry"],["cryETHUSD","ETH/USD","cry"],["R_100","Volatility 100","syn"],["R_75","Volatility 75","syn"],["R_50","Volatility 50","syn"],["R_25","Volatility 25","syn"],["R_10","Volatility 10","syn"]];
-let hq=[],pumpOn=false,qDelay=1000,qPause=0,rlLogged=false;
+let hq=[],pumpOn=false,qDelay=700,qPause=0,rlLogged=false;
 function qsend(m){hq.push(m);if(!pumpOn){pumpOn=true;setTimeout(pump,0)}}
 function pump(){if(!hq.length){pumpOn=false;return}const w=qPause-Date.now();if(w>0){setTimeout(pump,w);return}sendPub(hq.shift());setTimeout(pump,qDelay)}
 function rlRetry(e){const r=reqMap[e.req_id];if((!r||r.sym!==e.ticks_history)&&!btPend[e.req_id])return;hq.unshift(e);qPause=Date.now()+8000;qDelay=Math.min(qDelay+400,3000);
@@ -366,22 +368,28 @@ function buildSymSelect(){const sel=$("sym"),cur=sel.value;sel.innerHTML="";
  if([...sel.options].some(o=>o.value===cur))sel.value=cur}
 function bind(){const d=M[$("sym").value];if(d){candles=d.c;htf=d.h;htf2=d.h2||[];htfG=d.g;htf2G=d.g2||0}else{candles=[];htf=[];htf2=[]}}
 const uidx=sy=>{const q=UNI.findIndex(u=>u[0]===sy);return q<0?UNI.length+10:q};
+function mkReqs(sy,n,gr,hg,hg2,keep){const b={ticks_history:sy,adjust_start_time:1,end:"latest",style:"candles",subscribe:1};
+ return{m:Object.assign({},b,{count:keep?120:300,granularity:gr,req_id:1000+n*3}),z:Object.assign({},b,{count:keep?60:200,granularity:hg,req_id:1001+n*3}),c:Object.assign({},b,{count:keep?60:200,granularity:hg2,req_id:20000+n})}}
+function regMap(sy,n){reqMap[1000+n*3]={sym:sy,kind:"main"};reqMap[1001+n*3]={sym:sy,kind:"htf"};reqMap[1002+n*3]={sym:sy,kind:"older"};reqMap[20000+n]={sym:sy,kind:"htf2"}}
 function subscribeAll(){
- const gen=++subGen;sendPub({forget_all:"candles"});hq.length=0;qDelay=1000;rlLogged=false;const old=M;M={};reqMap={};
- const gr=+$("gran").value,hg=ZMAP[gr]||900,hg2=HMAP[gr]||3600,cur=$("sym").value,elig=[],reqs=[];
+ const gen=++subGen;sendPub({forget_all:"candles"});hq.length=0;qDelay=700;rlLogged=false;const old=M;M={};reqMap={};
+ const gr=+$("gran").value,hg=ZMAP[gr]||900,hg2=HMAP[gr]||3600,cur=$("sym").value,elig=[];
  if($("scan").checked)UNI.forEach(u=>{if(u[3]!==false&&$("g_"+u[2])&&$("g_"+u[2]).checked)elig.push(u[0])});else elig.push(cur);
  const set=[cur];elig.forEach(x=>{if(!set.includes(x))set.push(x)});if(GR.sym&&(GR.on||GR.show)&&!set.includes(GR.sym))set.push(GR.sym);
- set.forEach(sy=>{const n=uidx(sy),o=old[sy],keep=!!(o&&o.gr===gr&&o.c.length&&(Date.now()/1000-o.c[o.c.length-1].t)<gr*90);M[sy]={c:keep?o.c:[],h:keep?o.h:[],h2:keep?(o.h2||[]):[],g:hg,g2:hg2,gr,older:keep,n,tr:elig.includes(sy)};
-  reqMap[1000+n*3]={sym:sy,kind:"main"};reqMap[1001+n*3]={sym:sy,kind:"htf"};reqMap[1002+n*3]={sym:sy,kind:"older"};reqMap[20000+n]={sym:sy,kind:"htf2"};
-  reqs.push({ticks_history:sy,adjust_start_time:1,count:keep?120:600,end:"latest",style:"candles",granularity:gr,subscribe:1,req_id:1000+n*3},
-   {ticks_history:sy,adjust_start_time:1,count:keep?60:250,end:"latest",style:"candles",granularity:hg,subscribe:1,req_id:1001+n*3},
-   {ticks_history:sy,adjust_start_time:1,count:keep?60:300,end:"latest",style:"candles",granularity:hg2,subscribe:1,req_id:20000+n})});
- setTimeout(()=>{if(gen===subGen)reqs.forEach(qsend)},900);
+ const pri=[],mains=[],ctxs=[];
+ set.forEach(sy=>{const n=uidx(sy),o=old[sy],keep=!!(o&&o.gr===gr&&o.c.length&&(Date.now()/1000-o.c[o.c.length-1].t)<gr*90);
+  M[sy]={c:keep?o.c:[],h:keep?o.h:[],h2:keep?(o.h2||[]):[],g:hg,g2:hg2,gr,older:keep,n,tr:elig.includes(sy)};regMap(sy,n);
+  const q=mkReqs(sy,n,gr,hg,hg2,keep);if(sy===cur)pri.push(q.m,q.z,q.c);else{mains.push(q.m);ctxs.push(q.z,q.c)}});
+ const reqs=[...pri,...mains,...ctxs];
+ setTimeout(()=>{if(gen===subGen)reqs.forEach(qsend)},300);
  htfG=hg;htf2G=hg2;bind();renderMkt();
 }
+function subscribeOne(sy){const gr=+$("gran").value,hg=ZMAP[gr]||900,hg2=HMAP[gr]||3600,n=uidx(sy);
+ M[sy]={c:[],h:[],h2:[],g:hg,g2:hg2,gr,older:false,n,tr:false};regMap(sy,n);const q=mkReqs(sy,n,gr,hg,hg2,false);
+ hq.unshift(q.m,q.z,q.c);if(!pumpOn){pumpOn=true;setTimeout(pump,0)}bind();renderMkt()}
 function resolve(m){const r=m.req_id!=null?m.req_id:(m.echo_req&&m.echo_req.req_id);if(r!=null&&reqMap[r])return reqMap[r];
  const o=m.ohlc;if(o){const sy=o.symbol||o.underlying_symbol;if(sy&&M[sy])return{sym:sy,kind:(+o.granularity===M[sy].g2&&M[sy].g2!==+$("gran").value)?"htf2":(+o.granularity===M[sy].g&&M[sy].g!==+$("gran").value)?"htf":"main"}}return null}
-$("sym").onchange=()=>{if(M[$("sym").value]){bind();$("price").textContent="";draw();analyse()}else subscribeAll()};
+$("sym").onchange=()=>{if(M[$("sym").value]){bind();$("price").textContent="";draw();analyse()}else subscribeOne($("sym").value)};
 $("gran").onchange=subscribeAll;
 ["scan","g_fx","g_xau","g_us","g_cry","g_syn"].forEach(id=>$(id).onchange=subscribeAll);
 function renderMkt(){const el=$("mktlist");if(!el)return;const gn={fx:"Forex",xau:"Ouro",us:"Índice EUA",cry:"Cripto",syn:"Sintético"};
@@ -394,6 +402,7 @@ function handle(m){
  if(m.error&&/rate limit/i.test(m.error.message||"")&&m.echo_req&&m.echo_req.ticks_history){rlRetry(m.echo_req);return}
  if(m.error&&m.echo_req&&m.echo_req.passthrough&&m.echo_req.passthrough.grid!=null){const pt=m.echo_req.passthrough;delete GR.pos[pt.side+pt.grid];log("Grid: ordem recusada — "+(m.error.message||""),"dn");return}
  if(m.error&&m.echo_req&&m.echo_req.buy&&gridMeta[m.echo_req.buy]){const g=gridMeta[m.echo_req.buy];delete gridMeta[m.echo_req.buy];delete GR.pos[g.side+g.grid];log("Grid: compra recusada — "+(m.error.message||""),"dn");return}
+ if(m.error&&m.echo_req&&m.echo_req.sell){sellSent.delete(m.echo_req.sell);log("Não foi possível fechar a operação: "+(m.error.message||""),"dn");return}
  if(m.error&&m.echo_req&&btPend[m.echo_req.req_id]){const f=btPend[m.echo_req.req_id];delete btPend[m.echo_req.req_id];f(null);return}
  if(m.error){if(m.echo_req&&(m.echo_req.proposal||m.echo_req.buy))busy=false;log("Erro: "+m.error.message,"dn");return}
  if(m.msg_type==="authorize"){acctId=m.authorize.loginid;cur=m.authorize.currency;
@@ -420,7 +429,7 @@ function handle(m){
  else if(m.msg_type==="proposal"&&m.echo_req.passthrough){const pt=m.echo_req.passthrough;if(pt.grid!=null)gridMeta[m.proposal.id]=pt;sendAcc({buy:m.proposal.id,price:+m.echo_req.amount||curStake});}
  else if(m.msg_type==="buy"&&m.echo_req&&gridMeta[m.echo_req.buy]){gridBought(m)}
  else if(m.msg_type==="buy"){const id=m.buy.contract_id;openIds.add(id);saveRun();{const n0=Math.floor(Date.now()/1000),lc=(M[pend&&pend.sym]||{c:candles}).c.slice(-1)[0];if(pend)trades.push({id,type:pend.type,sym:pend.sym,stake:curStake,t0:n0,exp:n0+(pend.mult?(pend.mtime>0?pend.mtime*60:86400):pend.dur*60),noexp:pend.mult&&!(pend.mtime>0),mult:pend.mult?pend.m:0,sl:pend.sl,tp:pend.tp,px:lc?lc.c:0});if(trades.length>15)trades.shift()}if(pend&&pend.mult&&pend.mtime>0)setTimeout(()=>{if(openIds.has(id))sendAcc({sell:id,price:0})},pend.mtime*60000);log("Compra #"+id+" a "+m.buy.buy_price,"up");stats.n++;tradesToday++;$("s2").textContent=stats.n;sendAcc({proposal_open_contract:1,contract_id:id,subscribe:1})}
- else if(m.msg_type==="proposal_open_contract"){const c=m.proposal_open_contract;if(gridOpen[c.contract_id]){gridPoc(c,m);return}if(!c.is_sold)updBar(c);if(c.is_sold&&openIds.has(c.contract_id)){openIds.delete(c.contract_id);saveRun();trades=trades.filter(t=>t.id!==c.contract_id);clearBar();draw();sendAcc({forget:m.subscription.id});
+ else if(m.msg_type==="proposal_open_contract"){const c=m.proposal_open_contract;if(gridOpen[c.contract_id]){gridPoc(c,m);return}if(!c.is_sold)updBar(c);if(c.is_sold&&openIds.has(c.contract_id)){openIds.delete(c.contract_id);sellSent.delete(c.contract_id);saveRun();trades=trades.filter(t=>t.id!==c.contract_id);clearBar();draw();sendAcc({forget:m.subscription.id});
   const p=+c.profit;stats.pl+=p;p>0?stats.w++:stats.l++;consLoss=p>0?0:consLoss+1;$("s3").textContent=stats.w;$("s4").textContent=stats.l;
   $("s5").textContent=stats.pl.toFixed(2);$("s5").className=stats.pl>=0?"up":"dn";manage(p);log("Resultado #"+c.contract_id+": "+p.toFixed(2),p>0?"up":"dn")}}
 }
@@ -656,7 +665,7 @@ function showNext(){$("s6").textContent=nextStake?nextStake.toFixed(2):"—"}
 function resetStake(){lossAcc=0;sorosStep=0;nextStake=Math.max(0.35,num("stake"));showNext()}
 function setBot(on,why){botOn=on;$("pw").textContent=on?"⏹ Desligar bot":"▶ Ligar bot";$("pw").className=on?"r":"p";
  $("s7").textContent=on?"ON":"OFF";$("s7").className=on?"up":"dn";$("stline").textContent=on?"● OPERANDO":"● AGUARDANDO";
- if(on){stopSent=false;if(why!=="resume"){startPl=stats.pl;resetStake()}log(why==="resume"?"Bot RETOMADO após recarregar a página":"Bot LIGADO","up")}else log("Bot DESLIGADO"+(why?" — "+why:""),"dn");saveRun()}
+ if(on){stopSent=false;if(why!=="resume"){startPl=stats.pl;resetStake()}log(why==="resume"?"Bot RETOMADO após recarregar a página":"Bot LIGADO","up")}else{log("Bot DESLIGADO"+(why?" — "+why:""),"dn");if($("closeOnStop").checked&&openIds.size)closeOpen("bot desligado")}saveRun()}
 $("pw").onclick=()=>setBot(!botOn);
 $("stake").onchange=()=>{if(!lossAcc)resetStake()};
 $("mg").onchange=resetStake;
@@ -752,7 +761,7 @@ function updBar(c){
  const p=+c.profit||0,pc=c.profit_percentage!=null?+c.profit_percentage:(c.buy_price?p/c.buy_price*100:0);
  if(botOn&&!stopSent&&/^MULT/.test(c.contract_type||"")){const tot=stats.pl-startPl+p,L=num("sl"),W=num("sw");let why=null;
   if(L>0&&tot<=-L)why="Stop Loss da sessão atingido ("+tot.toFixed(2)+")";else if(W>0&&tot>=W)why="Stop Win da sessão atingido (+"+tot.toFixed(2)+")";
-  if(why){stopSent=true;setBot(false,why);sendAcc({sell:c.contract_id,price:0});log("Fechando a operação aberta…","mu")}}
+  if(why){stopSent=true;setBot(false,why);closeOpen("stop da sessão atingido")}}
  $("ctl").innerHTML='<span style="display:inline;color:#ff6a00;font-size:14px">●</span> CONTRATO ABERTO'+(tr?" · "+symName(tr.sym):"");$("ctl").className="";
  $("c0").textContent=c.contract_type==="CALL"?"CALL ▲":c.contract_type==="PUT"?"PUT ▼":c.contract_type==="MULTUP"?"MULT ▲":c.contract_type==="MULTDOWN"?"MULT ▼":(c.contract_type||"—");
  $("c1").textContent=(+c.buy_price).toFixed(2)+" "+(c.currency||"");
@@ -884,6 +893,9 @@ function renderTerm(){
    +(op.length?'<div class="ec">Em contrato · '+(op[0].pl!=null?(op[0].pl>=0?'+':'')+op[0].pl.toFixed(2):'—')+'</div>':'')
    +(ls?'<small>último sinal: '+ls.n+(ls.dir==="CALL"?' ▲ ':' ▼ ')+new Date(ls.t).toTimeString().slice(0,5)+'</small>':'')
    +'<button data-sy="'+sy+'">'+(sy===cur?'✓ no gráfico':'Gráfico')+'</button></div>'});
+ const tot=syms.length,okc=syms.filter(sy=>{const d=M[sy];return d.c.length>0&&d.h.length>0&&d.h2.length>0}).length;
+ if(M[cur]&&!M[cur].c.length)$("price").textContent="Carregando gráfico…";
+ if(okc<tot)wl='<div class="mu" style="font-size:12px;padding:4px 6px 10px">Carregando mercados: '+okc+'/'+tot+' prontos (o gráfico sai primeiro, depois H1 e M15)</div>'+wl;
  $("wl").innerHTML=wl||'<div class="mu">Carregando mercados…</div>';$("scg").innerHTML=sc||'<div class="mu">Carregando mercados…</div>'}
 const pickRow=e=>{const r=e.target.closest&&e.target.closest("[data-sy]");if(r)selSym(r.dataset.sy)};
 $("wl").onclick=pickRow;$("scg").onclick=pickRow;
@@ -977,7 +989,7 @@ setInterval(sgRender,1000);sgRender();
 
 
 // ---- Persistência: configuração e estado do bot sobrevivem a recarregar a página ----
-const PERSIST=["gr_sym","gr_lo","gr_hi","gr_n","gr_mode","gr_inv","gr_mult","gr_side","gr_trig","gr_trigpx","gr_tpsl","gr_tppx","gr_slpx","gr_sell","g_cry","stake","dur","ctype","mult","mtp","msl","mtime","mg","sl","sw","scan","g_fx","g_xau","g_us","g_syn","smc_min","smc_hr","smc_h0","smc_h1","smc_maxd","smc_pause","r21","sigonly","gran","pp_p","pp_st","sg_snd"];
+const PERSIST=["closeOnStop","gr_sym","gr_lo","gr_hi","gr_n","gr_mode","gr_inv","gr_mult","gr_side","gr_trig","gr_trigpx","gr_tpsl","gr_tppx","gr_slpx","gr_sell","g_cry","stake","dur","ctype","mult","mtp","msl","mtime","mg","sl","sw","scan","g_fx","g_xau","g_us","g_syn","smc_min","smc_hr","smc_h0","smc_h1","smc_maxd","smc_pause","r21","sigonly","gran","pp_p","pp_st","sg_snd"];
 function saveCfg(){try{const o={v:{},b:{}};PERSIST.forEach(id=>{const e=$(id);if(!e)return;o.v[id]=e.type==="checkbox"?e.checked:e.value});document.querySelectorAll("[data-bot]").forEach(e=>{o.b[e.dataset.bot]=e.checked});localStorage.setItem("orby_cfg",JSON.stringify(o))}catch(e){}}
 function saveRun(){try{localStorage.setItem("orby_run",JSON.stringify({botOn,startPl,stats,lossAcc,sorosStep,nextStake,openIds:[...openIds]}))}catch(e){}}
 (function(){try{const r=JSON.parse(localStorage.getItem("orby_run")||"null");if(!r)return;Object.assign(stats,r.stats||{});startPl=r.startPl||0;lossAcc=r.lossAcc||0;sorosStep=r.sorosStep||0;nextStake=r.nextStake||0;(r.openIds||[]).forEach(id=>openIds.add(id));if(openIds.size){busy=true;busyAt=Date.now()}
@@ -1050,5 +1062,11 @@ $("gr_start").onclick=()=>{const er=gValid();if(er){$("gr_msg").textContent=er;r
 $("gr_stop").onclick=()=>{if(!GR.on&&!Object.keys(gridOpen).length){$("gr_msg").textContent="O grid já está parado.";return}const ask=typeof confirm==="function"?confirm("Parar o grid e fechar todas as posições abertas agora? (Cancelar = parar sem fechar)"):true;gStop("parado por você",ask);GR.show=false;draw()};
 setInterval(gRender,2000);gInfo();gRender();
 
+
+// ---- Fechar a operação aberta (scalp): botão e ao desligar o bot ----
+const sellSent=new Set();
+function closeOpen(reason){let n=0;openIds.forEach(id=>{if(sellSent.has(id))return;sellSent.add(id);sendAcc({sell:id,price:0});n++});
+ log(n?"Fechando "+n+" operação(ões) aberta(s) ("+reason+")…":"Nenhuma operação aberta para fechar.","mu")}
+$("closeNow").onclick=()=>{if(!openIds.size){log("Não há operação aberta para fechar.","mu");return}closeOpen("fechado por você")};
 init();
 </script></body></html>
