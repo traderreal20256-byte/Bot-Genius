@@ -140,8 +140,7 @@ canvas{width:100%;height:340px;display:block;background:#060a12;border-radius:10
 
  <section class="page" id="p-bots"><div class="card"><h2>Estratégias</h2>
    <div class="bot"><div>Pullback na média + engolfo<small>Médias 20/99/200 alinhadas; toque na SMA20 e engolfo da vela anterior</small></div><input type="checkbox" data-bot="pbe" checked></div>
-   <div class="bot"><div>Rompimento<small>Fecha acima/abaixo da máxima/mínima das últimas 20 velas</small></div><input type="checkbox" data-bot="brk"></div>
-   <div class="bot"><div>Pullback<small>Tendência pelas médias, retorno e retomada da SMA20</small></div><input type="checkbox" data-bot="pb"></div>
+   <div class="bot"><div>Rompimento de suporte/resistência (com confirmação)<small>Níveis onde o preço já reagiu 2 ou mais vezes. A vela rompe e fecha além do nível, o preço não volta para dentro e entra na vela de confirmação (reteste do nível ou continuação).</small></div><input type="checkbox" data-bot="brk"></div>
    <div class="bot"><div>SMC simplificado<small>Varredura de liquidez em topo/fundo de swing com rejeição</small></div><input type="checkbox" data-bot="smc"></div>
    <div class="bot"><div>SMC completo (confluência H1 · M15 · M5)<small>Varredura de liquidez → CHoCH → BOS → pullback no OB/FVG → vela de confirmação, com pontuação de confluência. As zonas aparecem no gráfico.</small></div><input type="checkbox" data-bot="smcf" checked></div>
    <div class="bot"><div>Suporte e resistência (retração)<small>Entra NO TOQUE, no 3º toque de um nível onde o preço já reagiu 2 vezes: compra no suporte (só em tendência de alta) e vende na resistência (só em tendência de baixa). Tendência = médias 20/99/200 alinhadas. Os níveis aparecem no gráfico.</small></div><input type="checkbox" data-bot="sr"></div>
@@ -253,11 +252,11 @@ canvas{width:100%;height:340px;display:block;background:#060a12;border-radius:10
    <label>Stop Loss <input id="msl" type="number" value="0.8" min="0" step="0.5" style="width:80px"></label>
    <label>Fechar após (min) <input id="mtime" type="number" value="5" min="0" style="width:80px"></label>
    <div class="mu" style="font-size:12px;width:100%">Multiplicadores: sem duração fixa. O contrato fecha ao atingir Take Profit, Stop Loss ou o tempo em "Fechar após" (0 = sem limite de tempo). Com "Alvo 2:1" marcado, o Take Profit é sempre o dobro do Stop Loss (o campo Take Profit fica travado). O Stop Loss fica limitado a 90% do stake. Ao atingir o Stop Win ou o Stop Loss da sessão, o bot desliga e fecha a operação aberta na hora (vale para Multiplicadores). A perda máxima é o stake, mas a alavancagem faz a perda chegar rápido.</div></div>
-   <div class="row"><label>Gestão <select id="mg"><option value="fixa">Stake fixo</option><option value="soros">Sorosgale</option></select></label></div>
+   <div class="row"><label><input type="checkbox" id="mg"> <b>Sorosgale</b> (marque para ativar; desmarcado = stake fixo)</label></div>
    <div class="row"><label>Stop Loss <input id="sl" type="number" value="10" min="0" step="1" style="width:90px"></label>
    <label>Stop Win <input id="sw" type="number" value="10" min="0" step="1" style="width:90px"></label></div>
    <div class="row"><label><input type="checkbox" id="sigonly"> Apenas sinais (não operar)</label></div>
-   <div class="mu" style="font-size:12px">Stop Loss/Win em valor da moeda da conta, contado desde que você liga o bot (0 = sem limite). Sorosgale: após perda, entra com metade do prejuízo acumulado; ao ganhar, entra com a entrada anterior + o lucro, até recuperar tudo e voltar ao stake inicial. Use conta demo primeiro.</div>
+   <div class="mu" style="font-size:12px">Stop Loss/Win em valor da moeda da conta, contado desde que você liga o bot (0 = sem limite). Sorosgale: ao ganhar a primeira, a próxima entrada é a entrada + o lucro (Soros); se ganhar de novo, volta ao stake inicial. Se perder, acumula o prejuízo e entra com metade do acumulado; ao ganhar, entra com a entrada anterior + o lucro, até recuperar tudo e voltar ao stake inicial. Use conta demo primeiro.</div>
    <button id="pw2" class="p" style="width:100%;padding:16px;font-size:16px;margin-top:14px">▶ Iniciar robô</button>
  </div></section>
 
@@ -270,7 +269,7 @@ canvas{width:100%;height:340px;display:block;background:#060a12;border-radius:10
 </div>
 <script>
 const $=id=>document.getElementById(id);
-(function(){try{const o=JSON.parse(localStorage.getItem("orby_cfg")||"null");if(!o)return;Object.keys(o.v).forEach(id=>{const e=document.getElementById(id);if(!e)return;if(e.type==="checkbox")e.checked=!!o.v[id];else e.value=o.v[id]});
+(function(){try{const o=JSON.parse(localStorage.getItem("orby_cfg")||"null");if(!o)return;Object.keys(o.v).forEach(id=>{const e=document.getElementById(id);if(!e)return;if(e.type==="checkbox")e.checked=id==="mg"?(o.v[id]===true||o.v[id]==="soros"):!!o.v[id];else e.value=o.v[id]});
  document.querySelectorAll("[data-bot]").forEach(e=>{if(e.dataset.bot in o.b)e.checked=o.b[e.dataset.bot]});const mr=document.getElementById("mrow"),ct=document.getElementById("ctype");if(mr&&ct)mr.style.display=ct.value==="mult"?"flex":"none";const t=document.getElementById("mtp"),r=document.getElementById("r21");if(t&&r)t.disabled=r.checked}catch(e){}})();
 
 let ws,candles=[],token=null,acctId=null,cur="USD",stats={n:0,w:0,l:0,pl:0},lastSig="";
@@ -347,7 +346,7 @@ function pump(){if(!hq.length){pumpOn=false;return}const w=qPause-Date.now();if(
 function rlRetry(e){const r=reqMap[e.req_id];if((!r||r.sym!==e.ticks_history)&&!btPend[e.req_id])return;hq.unshift(e);qPause=Date.now()+8000;qDelay=Math.min(qDelay+400,3000);
  if(!rlLogged){rlLogged=true;log("A Deriv limitou as requisições de histórico. Reduzindo o ritmo e tentando de novo…","mu")}
  if(!pumpOn){pumpOn=true;setTimeout(pump,0)}}
-let btPend={},btId=8000,symsLoaded=false,M={},reqMap={},subGen=0,started=false,cand=[],candTimer=null;const sigSeen=new Set(),WGT={smcf:3,pbe:2,brk:1,pb:1,smc:1,sr:2,fib:2,fim:2};
+let btPend={},btId=8000,symsLoaded=false,M={},reqMap={},subGen=0,started=false,cand=[],candTimer=null;const sigSeen=new Set(),WGT={smcf:3,pbe:2,brk:2,smc:1,sr:2,fib:2,fim:2};
 const symName=id=>(UNI.find(u=>u[0]===id)||[0,id])[1];
 function connectPub(){pub=new WebSocket("wss://api.derivws.com/trading/v1/options/ws/public");
  pub.onopen=requestSymbols;pub.onclose=()=>{started=false;log("Conexão de mercado caiu. Reconectando…","mu");setTimeout(connectPub,3000)};pub.onmessage=e=>handle(JSON.parse(e.data))}
@@ -436,8 +435,7 @@ const S={
  pbe(i){const t=trend(i),p=candles[i-1],c=candles[i],s=sma(20,i-1);if(!t||!s)return null;
   if(t===1&&p.l<=s&&bear(p)&&bull(c)&&c.c>=p.o&&c.o<=p.c)return"CALL";
   if(t===-1&&p.h>=s&&bull(p)&&bear(c)&&c.c<=p.o&&c.o>=p.c)return"PUT";return null},
- brk(i){if(i<21)return null;let hi=-1e12,lo=1e12;for(let k=i-20;k<i;k++){hi=Math.max(hi,candles[k].h);lo=Math.min(lo,candles[k].l)}
-  const c=candles[i];return c.c>hi?"CALL":(c.c<lo?"PUT":null)},
+ brk(i){return brkSR(i)},
  pb(i){const t=trend(i),p=candles[i-1],c=candles[i],sp=sma(20,i-1),sc=sma(20,i);if(!t||!sp)return null;
   if(t===1&&p.c<=sp&&c.c>sc&&bull(c))return"CALL";if(t===-1&&p.c>=sp&&c.c<sc&&bear(c))return"PUT";return null},
  smc(i){if(i<30)return null;let sh=null,sl=null;
@@ -446,9 +444,9 @@ const S={
    if(sl===null&&x.l<candles[k-1].l&&x.l<candles[k-2].l&&x.l<candles[k+1].l&&x.l<candles[k+2].l)sl=x.l}
   const c=candles[i];if(sh&&c.h>sh&&c.c<sh&&bear(c))return"PUT";if(sl&&c.l<sl&&c.c>sl&&bull(c))return"CALL";return null}
 };
-const NAMES={pbe:"Pullback+Engolfo",brk:"Rompimento",pb:"Pullback",smc:"SMC simples",smcf:"SMC completo",sr:"S/R retração",fib:"Fibonacci 0,618",fim:"Fimathe"};
+const NAMES={pbe:"Pullback+Engolfo",brk:"Rompimento",smc:"SMC simples",smcf:"SMC completo",sr:"S/R retração",fib:"Fibonacci 0,618",fim:"Fimathe"};
 const GR={on:false,show:false,sym:"frxEURUSD",lo:0,hi:0,n:20,mode:"a",inv:20,mult:30,both:false,lines:[],pos:{},pl:0,w:0,l:0,z:null,px:null,trigOn:false,trigPx:0,trigHit:true,tpslOn:false,tpPx:0,slPx:0,sell:true};let gridMeta={},gridOpen={};
-let htf2=[],htf2G=0,riskDay="",tradesToday=0,consLoss=0,smcInfo=null,fimG=null,srLv=[],fibG=null,smcBlock="",smcEv=null,lastWhy="",htf=[],htfG=900,sweepName="";
+let sorosStep=0,htf2=[],htf2G=0,riskDay="",tradesToday=0,consLoss=0,smcInfo=null,fimG=null,srLv=[],fibG=null,smcBlock="",smcEv=null,lastWhy="",htf=[],htfG=900,sweepName="";
 const HMAP={60:900,300:3600,900:14400,3600:86400},ZMAP={60:300,300:900,900:3600,3600:14400};
 const g2n=g=>({60:"M1",300:"M5",900:"M15",3600:"H1",14400:"H4",86400:"D1"}[g]||g+"s");
 function mkEv(A,d,j,type,from){
@@ -615,6 +613,17 @@ S.fim=i=>{if(i<60)return null;const g=fimCh(i);if(!g||i-g.i1>80)return null;cons
 function fimTxt(){if(!onBot("fim"))return"";if(!fimG)return"<br>Fimathe: sem canal de referência válido agora";const g=fimG,i=candles.length-2,c=candles[i].c,fx=x=>x.toFixed(x>=100?2:x>=20?3:5),
  pos=c>g.top?"acima do canal":c<g.bot?"abaixo do canal":"dentro do canal ("+Math.round((c-g.bot)/g.R*100)+"% da altura)";
  return"<br>Fimathe: canal "+fx(g.bot)+"–"+fx(g.top)+" ("+(g.up?"alta":"baixa")+"), zona neutra "+fx(g.zn[0])+"–"+fx(g.zn[1])+" · preço "+pos}
+// Rompimento de suporte/resistência com confirmação
+function brkSR(i){if(i<60)return null;const a=atr(i);if(!a)return null;const tol=a*0.25,fx=x=>x.toFixed(x>=100?2:x>=20?3:5);
+ for(const L of srLevels(i)){
+  for(let b=i-1;b>=Math.max(1,i-3);b--){
+   const x=candles[b],y=candles[b-1],up=x.c>L.p+tol&&y.c<=L.p+tol,dn=x.c<L.p-tol&&y.c>=L.p-tol;if(!up&&!dn)continue;const bd=Math.abs(x.c-x.o);if(bd<0.8*a||bd<0.6*((x.h-x.l)||1e-9))continue;
+   let held=true;for(let q=b+1;q<=i;q++){if(up?candles[q].c<=L.p:candles[q].c>=L.p){held=false;break}}if(!held)continue;
+   const cf=q=>{const z=candles[q];return up?(z.c>z.o&&z.c>L.p+tol&&(z.l<=L.p+tol||z.c>x.c)):(z.c<z.o&&z.c<L.p-tol&&(z.h>=L.p-tol||z.c<x.c))};
+   if(!cf(i))continue;let early=false;for(let q=b+1;q<i;q++){if(cf(q)){early=true;break}}if(early)continue;
+   lastWhy="Rompimento "+(up?"da resistência ":"do suporte ")+fx(L.p)+" ("+L.n+" toques): a vela fechou "+(up?"acima":"abaixo")+", o preço não voltou para dentro e a vela de confirmação "+(up?(candles[i].l<=L.p+tol?"fez o reteste e subiu":"seguiu subindo"):(candles[i].h>=L.p-tol?"fez o reteste e caiu":"seguiu caindo"));
+   return up?"CALL":"PUT"}}
+ return null}
 function smcTxt(){const i=candles.length-2;if(i<60||!htf.length||!htf2.length)return"<br>SMC: aguardando os candles de H1 e M15 carregarem";
  const T=candles[i].t+gOf(),jc=closedUpTo(htf2,htf2G,T),b=withArr(htf2,()=>h1Bias(jc)),e=smcEv;
  return"<br>H1: "+(b===1?"alta (HH + HL)":b===-1?"baixa (LL + LH)":"sem estrutura clara, o SMC não opera")+(e?" · M5: "+e.type+(e.d===1?" ▲":" ▼")+" há "+(i-e.j)+" velas":" · M5: sem CHoCH/BOS recente")}
@@ -629,7 +638,7 @@ function scanOn(sym){
    const k=cb.dataset.bot;if(k==="sr"||k==="fib")return;let sg2=null;try{sg2=S[k](i)}catch(e){}
    if(!sg2&&k==="smcf"&&smcBlock){const bk=sym+"b"+candles[i].t;if(!sigSeen.has(bk)){sigSeen.add(bk);log("SMC completo em "+symName(sym)+": zona tocada, mas bloqueada — "+smcBlock,"mu")}}
    if(!sg2)return;const key=sym+k+candles[i].t;if(sigSeen.has(key))return;sigSeen.add(key);
-   log("SINAL "+NAMES[k]+": "+(sg2==="CALL"?"COMPRA ▲":"VENDA ▼")+" em "+symName(sym)+((k==="smcf"||k==="sr"||k==="fib"||k==="fim")?" ["+lastWhy+"]":""),sg2==="CALL"?"up":"dn");
+   log("SINAL "+NAMES[k]+": "+(sg2==="CALL"?"COMPRA ▲":"VENDA ▼")+" em "+symName(sym)+((k==="smcf"||k==="sr"||k==="fib"||k==="fim"||k==="brk")?" ["+lastWhy+"]":""),sg2==="CALL"?"up":"dn");
    const tr=trend(i);lastSigM[sym]={dir:sg2,n:NAMES[k],t:Date.now()};cand.push({info:k==="smcf"?smcInfo:null,sym,name:symName(sym),dir:sg2,k,score:WGT[k]+((tr===1&&sg2==="CALL")||(tr===-1&&sg2==="PUT")?1:0),why:k==="smcf"?lastWhy:""});
   });
  }finally{candles=sc;htf=sh;htfG=sg;htf2=sh2;htf2G=sg2}
@@ -644,7 +653,7 @@ let resumePending=false,lastSigM={},dragL=[],chartMap=null,dragging=null,stopSen
 const ctm=()=>$("ctype").value==="mult";
 const num=id=>+$(id).value||0,r2=x=>Math.round(x*100)/100;
 function showNext(){$("s6").textContent=nextStake?nextStake.toFixed(2):"—"}
-function resetStake(){lossAcc=0;nextStake=Math.max(0.35,num("stake"));showNext()}
+function resetStake(){lossAcc=0;sorosStep=0;nextStake=Math.max(0.35,num("stake"));showNext()}
 function setBot(on,why){botOn=on;$("pw").textContent=on?"⏹ Desligar bot":"▶ Ligar bot";$("pw").className=on?"r":"p";
  $("s7").textContent=on?"ON":"OFF";$("s7").className=on?"up":"dn";$("stline").textContent=on?"● OPERANDO":"● AGUARDANDO";
  if(on){stopSent=false;if(why!=="resume"){startPl=stats.pl;resetStake()}log(why==="resume"?"Bot RETOMADO após recarregar a página":"Bot LIGADO","up")}else log("Bot DESLIGADO"+(why?" — "+why:""),"dn");saveRun()}
@@ -653,11 +662,13 @@ $("stake").onchange=()=>{if(!lossAcc)resetStake()};
 $("mg").onchange=resetStake;
 function manage(p){
  busy=false;saveRun();
- if($("mg").value==="soros"){
-  if(p<0)lossAcc+=-p;else if(p>0&&lossAcc>0)lossAcc-=p;
-  if(lossAcc>0.001){if(p>0)nextStake=curStake+p;else if(p<0)nextStake=lossAcc/2}
-  else{lossAcc=0;nextStake=num("stake")}
- }else nextStake=num("stake");
+ if($("mg").checked){
+  if(p<0){lossAcc+=-p;sorosStep=0}
+  else if(p>0){if(lossAcc>0)lossAcc-=p;else sorosStep=sorosStep?0:1}
+  if(p===0){}
+  else if(lossAcc>0.001){nextStake=p>0?curStake+p:lossAcc/2}
+  else{lossAcc=0;nextStake=(p>0&&sorosStep===1)?curStake+p:num("stake")}
+ }else{lossAcc=0;sorosStep=0;nextStake=num("stake")}
  nextStake=Math.max(0.35,r2(nextStake));showNext();
  const sp=stats.pl-startPl;
  if(botOn){
@@ -758,8 +769,7 @@ const EST=[["smcf","🧠","SMC completo","Confluência H1 · M15 · M5","H1 defi
 ["fib","🌀","Fibonacci 0,618","Primeiro toque na retração","Traça a retração do último impulso e entra no primeiro toque da região de 61,8%, sempre a favor da tendência. Invalida se o preço passar de 78,6%.",["Retração 61,8%","1º toque","Tendência 20/99/200"],"p","Exige paciência","depende de um impulso claro"],
 ["fim","📐","Fimathe","Canal de referência + zona neutra","Marca o canal entre o último topo e o último fundo e projeta a zona neutra do lado oposto. Entra no pullback de 50% do canal, no rompimento do canal ou, quando a zona neutra é rompida, na reversão.",["Canal de referência","Zona neutra","50% / rompimento"],"m","Ritmo moderado","depende de canais bem definidos"],
 ["pbe","🔁","Pullback + Engolfo","Médias 20/99/200 com confirmação","Espera as médias alinhadas, o preço tocar a SMA20 e uma vela engolfar a anterior para confirmar a entrada.",["SMA 20/99/200","Engolfo","Candle fechado"],"p","Exige paciência","sinais seletivos"],
-["brk","🚀","Rompimento","Máxima e mínima das últimas 20 velas","Entra quando uma vela fecha acima da máxima ou abaixo da mínima das últimas 20 velas.",["Rompimento","20 velas","Candle fechado"],"m","Ritmo moderado","costuma gerar mais sinais"],
-["pb","↩️","Pullback","Retomada da SMA20 na tendência","Opera o retorno do preço à média de 20 e a retomada do movimento a favor da tendência das médias 20/99/200.",["SMA 20","Tendência","Candle fechado"],"m","Ritmo moderado","depende de tendência definida"],
+["brk","🚀","Rompimento de S/R","Rompimento confirmado de suporte ou resistência","Marca níveis onde o preço já reagiu duas vezes. Quando uma vela rompe e fecha além do nível, o bot espera a confirmação (reteste do nível ou vela de continuação, sem o preço voltar para dentro) e só então entra a favor do rompimento.",["Suporte / resistência","Vela de rompimento","Confirmação"],"m","Ritmo moderado","depende de níveis bem marcados"],
 ["smc","🎯","SMC simplificado","Varredura de liquidez + rejeição","Procura a varredura de um topo ou fundo de swing seguida de uma vela de rejeição, sem os filtros do SMC completo.",["Liquidez","Rejeição","Swing"],"m","Ritmo moderado","mais sinais que o SMC completo"]];
 $("estl").innerHTML=EST.map(e=>'<div class="sc"><div class="sh"><div class="ico">'+e[1]+'</div><div><h3>'+e[2]+'</h3><p>'+e[3]+'</p></div><span class="bd">Disponível</span></div><div class="sd">'+e[4]+'</div><div class="tgs">'+e[5].map(t=>'<span class="tg">'+t+'</span>').join("")+'</div><div class="tgs"><span class="tg">Backtest: não realizado</span></div><div class="pc '+e[6]+'"><b>'+e[7]+'</b> <span>· '+e[8]+'</span></div><button class="go" data-go="'+e[0]+'"><span>Configurar e iniciar</span><span>→</span></button><label class="tgl"><input type="checkbox" data-sk="'+e[0]+'"> Incluir na varredura</label></div>').join("");
 function goPage(p){const b=document.querySelector('[data-p="'+p+'"]');if(b&&b.click)b.click()}
@@ -774,7 +784,7 @@ setInterval(wsChk,2000);syncEst();
 
 
 // ================= BACKTEST =================
-const BK=["smcf","sr","fib","fim","pbe","brk","pb","smc"],TOUCH={sr:1,fib:1},cfg={n:1000,g:60,d:5};
+const BK=["smcf","sr","fib","fim","pbe","brk","smc"],TOUCH={sr:1,fib:1},cfg={n:1000,g:60,d:5};
 $("bt_k").innerHTML=BK.map(k=>'<option value="'+k+'">'+NAMES[k]+'</option>').join("");
 function fillBtSyms(){const cur=$("bt_s").value||"frxEURUSD";$("bt_s").innerHTML=UNI.filter(u=>u[3]!==false).map(u=>'<option value="'+u[0]+'">'+u[1]+'</option>').join("");if([...$("bt_s").options].some(o=>o.value===cur))$("bt_s").value=cur}
 fillBtSyms();setInterval(fillBtSyms,15000);
@@ -791,10 +801,10 @@ function btOpt(){return{n:Math.max(1,Math.ceil(cfg.d*60/cfg.g)),gran:cfg.g,pay:(
 function runBT(A,k,o,Z){
  const sc=candles,sh=htf,sg=htfG,sh2=htf2,sg2=htf2G,tr=[];candles=A;htf=(Z&&Z.h)||[];htfG=(Z&&Z.hg)||0;htf2=(Z&&Z.h2)||[];htf2G=(Z&&Z.h2g)||0;
  try{
-  let free=0,day=-1,spl=0,stopped=false,loss=0,next=o.stake;const START=220,n=o.n;
+  let free=0,day=-1,spl=0,stopped=false,loss=0,sst=0,next=o.stake;const START=220,n=o.n;
   for(let i=START;i<A.length-n-3;i++){
    if(i<free)continue;
-   const dy=Math.floor(A[i].t/86400);if(dy!==day){day=dy;spl=0;stopped=false;loss=0;next=o.stake}
+   const dy=Math.floor(A[i].t/86400);if(dy!==day){day=dy;spl=0;stopped=false;loss=0;sst=0;next=o.stake}
    if(stopped)continue;
    let dir=null,en=0,ex=0,ti=i,exi=0;
    if(TOUCH[k]){const t=i;candles=A.slice(0,t+1);let r=null;try{r=liveTouch(k)}catch(e){}
@@ -807,8 +817,9 @@ function runBT(A,k,o,Z){
    const win=dir==="CALL"?ex>en:ex<en,stake=o.soros?next:o.stake,p=win?stake*o.pay/100:-stake;
    tr.push({ti:A[ti].t,te:A[exi].t+o.gran,dir,en,ex,stake,r:p});
    free=exi+1;spl+=p;
-   if(o.soros){if(p<0)loss+=-p;else if(p>0&&loss>0)loss-=p;
-    if(loss>0.001){if(p>0)next=stake+p;else next=loss/2}else{loss=0;next=o.stake}next=Math.max(0.35,Math.round(next*100)/100)}
+   if(o.soros){if(p<0){loss+=-p;sst=0}else if(p>0){if(loss>0)loss-=p;else sst=sst?0:1}
+    if(p!==0){if(loss>0.001){next=p>0?stake+p:loss/2}else{loss=0;next=(p>0&&sst===1)?stake+p:o.stake}}
+    next=Math.max(0.35,Math.round(next*100)/100)}
    if(o.stops&&((o.sl>0&&spl<=-o.sl)||(o.sw>0&&spl>=o.sw)))stopped=true;
   }
  }finally{candles=sc;htf=sh;htfG=sg;htf2=sh2;htf2G=sg2}
@@ -935,8 +946,6 @@ let sgBuf=[],sgTimer=null;
 const trTxt=i=>{const tr=trend(i);return tr===1?"Tendência de alta (SMA20 > SMA99 > SMA200)":tr===-1?"Tendência de baixa (SMA20 < SMA99 < SMA200)":"Médias sem alinhamento claro"};
 function explain(k,dir,i){const up=dir==="CALL",tt=trTxt(i),
  m={pbe:up?"Pullback na SMA20 a favor da alta, confirmado por vela de alta que engolfou a anterior":"Pullback na SMA20 a favor da baixa, confirmado por vela de baixa que engolfou a anterior",
- brk:up?"Rompimento: a vela fechou acima da máxima das últimas 20 velas":"Rompimento: a vela fechou abaixo da mínima das últimas 20 velas",
- pb:up?"Pullback: o preço recuou até a SMA20 e retomou a alta":"Pullback: o preço subiu até a SMA20 e retomou a queda",
  smc:up?"Varredura de liquidez: o preço rompeu um fundo de swing e voltou, com vela de rejeição de alta":"Varredura de liquidez: o preço rompeu um topo de swing e voltou, com vela de rejeição de baixa"};
  return(m[k]||lastWhy)+". "+tt+"."}
 function sgPush(sym,k,dir,en,why){sgBuf.push({sym,k,dir,en,why});if(!sgTimer)sgTimer=setTimeout(sgFlush,2500)}
@@ -970,8 +979,8 @@ setInterval(sgRender,1000);sgRender();
 // ---- Persistência: configuração e estado do bot sobrevivem a recarregar a página ----
 const PERSIST=["gr_sym","gr_lo","gr_hi","gr_n","gr_mode","gr_inv","gr_mult","gr_side","gr_trig","gr_trigpx","gr_tpsl","gr_tppx","gr_slpx","gr_sell","g_cry","stake","dur","ctype","mult","mtp","msl","mtime","mg","sl","sw","scan","g_fx","g_xau","g_us","g_syn","smc_min","smc_hr","smc_h0","smc_h1","smc_maxd","smc_pause","r21","sigonly","gran","pp_p","pp_st","sg_snd"];
 function saveCfg(){try{const o={v:{},b:{}};PERSIST.forEach(id=>{const e=$(id);if(!e)return;o.v[id]=e.type==="checkbox"?e.checked:e.value});document.querySelectorAll("[data-bot]").forEach(e=>{o.b[e.dataset.bot]=e.checked});localStorage.setItem("orby_cfg",JSON.stringify(o))}catch(e){}}
-function saveRun(){try{localStorage.setItem("orby_run",JSON.stringify({botOn,startPl,stats,lossAcc,nextStake,openIds:[...openIds]}))}catch(e){}}
-(function(){try{const r=JSON.parse(localStorage.getItem("orby_run")||"null");if(!r)return;Object.assign(stats,r.stats||{});startPl=r.startPl||0;lossAcc=r.lossAcc||0;nextStake=r.nextStake||0;(r.openIds||[]).forEach(id=>openIds.add(id));if(openIds.size){busy=true;busyAt=Date.now()}
+function saveRun(){try{localStorage.setItem("orby_run",JSON.stringify({botOn,startPl,stats,lossAcc,sorosStep,nextStake,openIds:[...openIds]}))}catch(e){}}
+(function(){try{const r=JSON.parse(localStorage.getItem("orby_run")||"null");if(!r)return;Object.assign(stats,r.stats||{});startPl=r.startPl||0;lossAcc=r.lossAcc||0;sorosStep=r.sorosStep||0;nextStake=r.nextStake||0;(r.openIds||[]).forEach(id=>openIds.add(id));if(openIds.size){busy=true;busyAt=Date.now()}
  $("s2").textContent=stats.n;$("s3").textContent=stats.w;$("s4").textContent=stats.l;$("s5").textContent=stats.pl.toFixed(2);$("s5").className=stats.pl>=0?"up":"dn";showNext();if(r.botOn)resumePending=true}catch(e){}})();
 if(document.addEventListener){document.addEventListener("change",saveCfg);document.addEventListener("input",saveCfg)}
 
@@ -980,7 +989,7 @@ function resetSession(){
  const ask=t=>typeof confirm==="function"?confirm(t):true;
  if(openIds.size&&!ask("Há uma operação aberta. Ela continua na Deriv, mas o painel deixará de acompanhá-la. Resetar mesmo assim?"))return;
  if(!openIds.size&&!ask("Zerar o PNL da sessão, os wins, os losses e o histórico? O bot continua ligado ou desligado como está."))return;
- stats.n=0;stats.w=0;stats.l=0;stats.pl=0;consLoss=0;tradesToday=0;startPl=0;lossAcc=0;busy=false;stopSent=false;openIds.clear();trades=[];cand.length=0;lastSigM={};
+ stats.n=0;stats.w=0;stats.l=0;stats.pl=0;consLoss=0;tradesToday=0;startPl=0;lossAcc=0;sorosStep=0;busy=false;stopSent=false;openIds.clear();trades=[];cand.length=0;lastSigM={};
  resetStake();
  $("s2").textContent="0";$("s3").textContent="0";$("s4").textContent="0";$("s5").textContent="0.00";$("s5").className="";$("s8").textContent="—";
  $("log").innerHTML="";clearBar();draw();saveRun();
