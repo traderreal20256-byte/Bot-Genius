@@ -75,6 +75,7 @@ canvas{width:100%;height:340px;display:block;background:#060a12;border-radius:10
  <button class="nav" data-p="dash" data-t="Terminal">📊 Terminal</button>
  <button class="nav" data-p="bots" data-t="Bots">🤖 Bots</button>
  <button class="nav" data-p="mkt" data-t="Mercados">🌐 Mercados</button>
+ <button class="nav" data-p="tk" data-t="Bot de Ticks">⚡ Bot de Ticks</button>
  <button class="nav" data-p="gr" data-t="Bot Grid">🧮 Bot Grid</button>
  <button class="nav" data-p="bt" data-t="Backtest">🧪 Backtest</button>
  <button class="nav" data-p="pp" data-t="Simulação ao vivo">📡 Simulação ao vivo</button>
@@ -216,6 +217,25 @@ canvas{width:100%;height:340px;display:block;background:#060a12;border-radius:10
   <div id="sg_out"></div>
  </section>
 
+ <section class="page" id="p-tk">
+  <div class="eyebrow">Contratos de 1 a 10 ticks</div><div style="font-size:24px;font-weight:700;margin:4px 0 14px">Bot de Ticks</div>
+  <div class="vd w"><b style="font-size:15px">Sobre os 90% de assertividade</b><span class="mu">Não existe estratégia com 90% de acerto comprovado em ticks, e eu não vou prometer isso. Nos índices sintéticos da Deriv os preços são gerados por números aleatórios, e com payout perto de 92% basta acertar uns 52% para empatar. Quem anuncia 90% costuma usar contratos de dígitos (Differs), que acertam cerca de 90% das vezes mas pagam muito pouco, em torno de 10%: uma única perda apaga as nove vitórias. Este bot mede o acerto <b>de verdade</b>, ao vivo, com margem de erro, antes de você arriscar um centavo.</span></div>
+  <div class="grid2">
+   <div class="card"><h2>Configuração</h2>
+    <div class="row"><label>Índice <select id="tk_sym"><option value="R_100">Volatility 100</option><option value="R_75">Volatility 75</option><option value="R_50">Volatility 50</option><option value="R_25">Volatility 25</option><option value="R_10">Volatility 10</option><option value="1HZ100V">Volatility 100 (1s)</option><option value="1HZ10V">Volatility 10 (1s)</option></select></label></div>
+    <div class="row"><label>Duração (ticks) <input id="tk_dur" type="number" min="1" max="10" value="5" style="width:80px"></label><label>Sequência (N ticks) <input id="tk_n" type="number" min="2" max="8" value="3" style="width:80px"></label></div>
+    <div class="row"><label>Estratégia para operar <select id="tk_strat"><option value="mom">Momentum (segue a sequência)</option><option value="rev">Reversão (aposta contra a sequência)</option><option value="ema">Cruzamento de médias (EMA 5 x 20)</option></select></label></div>
+    <div class="row"><label>Modo <select id="tk_mode"><option value="sim">Simulação (não usa saldo)</option><option value="real">Real (usa a conta conectada)</option></select></label></div>
+    <div class="row"><label>Stake <input id="tk_stake" type="number" min="0.35" step="0.5" value="1" style="width:80px"></label><label>Payout (%) <input id="tk_pay" type="number" value="92" style="width:80px"></label></div>
+    <div class="row"><label>Stop Loss <input id="tk_sl" type="number" value="10" style="width:80px"></label><label>Stop Win <input id="tk_sw" type="number" value="20" style="width:80px"></label></div>
+    <button id="tk_go" class="p" style="width:100%;padding:14px;font-size:15px;margin-bottom:8px">▶ Iniciar monitoramento</button>
+    <div id="tk_msg" class="mu" style="font-size:13px"></div></div>
+   <div><div class="card"><h2>Ao vivo</h2><div id="tk_live" class="mu">Parado.</div></div>
+   <div class="card"><h2>Simulação das 3 estratégias (win rate medido)</h2><div class="bt-w"><table class="bt-t"><tr><th>Estratégia</th><th>Ops</th><th>Win rate</th><th>IC 95%</th><th>Resultado</th></tr><tbody id="tk_tbl"></tbody></table></div><div id="tk_be" class="mu" style="font-size:12px;margin-top:8px"></div></div>
+   <div class="card"><h2>Conta (modo real)</h2><div id="tk_real" class="mu">Nenhuma operação real ainda.</div></div></div>
+  </div>
+ </section>
+
  <section class="page" id="p-gr">
   <div class="eyebrow">Faixa de preço dividida em grids</div><div style="font-size:24px;font-weight:700;margin:4px 0 14px">Bot Grid</div>
   <div class="grid2">
@@ -261,7 +281,20 @@ canvas{width:100%;height:340px;display:block;background:#060a12;border-radius:10
    <div class="row"><label><input type="checkbox" id="sigonly"> Apenas sinais (não operar)</label></div>
    <div class="mu" style="font-size:12px">Stop Loss/Win em valor da moeda da conta, contado desde que você liga o bot (0 = sem limite). Sorosgale: ao ganhar a primeira, a próxima entrada é a entrada + o lucro (Soros); se ganhar de novo, volta ao stake inicial. Se perder, acumula o prejuízo e entra com metade do acumulado; ao ganhar, entra com a entrada anterior + o lucro, até recuperar tudo e voltar ao stake inicial. Use conta demo primeiro.</div>
    <button id="pw2" class="p" style="width:100%;padding:16px;font-size:16px;margin-top:14px">▶ Iniciar robô</button>
- </div></section>
+ </div>
+ <div class="card" style="border-color:#1f6b46"><h2>Gerenciamento estratégico de capital</h2>
+   <label class="tgl" style="margin:0 0 10px"><input type="checkbox" id="mg_k"> <b>Ativar</b> · Kelly fracionado + Score de confluência + Risk of Ruin (substitui o stake fixo e o Sorosgale)</label>
+   <div class="mu" style="font-size:12px;line-height:1.6;margin-bottom:12px">A entrada é um % da banca, calculado a cada sinal. Ela <b>não</b> depende de perdas anteriores (não é Gale). O valor final é o <b>menor</b> entre: o teto do score, o Kelly fracionado, o cap absoluto e o limite do Risk of Ruin, reduzido se a banca estiver em drawdown.</div>
+   <div class="row"><label>Fração do Kelly <select id="kly_f"><option value="0.25">0,25 (¼ Kelly)</option><option value="0.5">0,50 (½ Kelly)</option></select></label><label>Cap absoluto (% da banca) <input id="kly_cap" type="number" step="0.05" value="1" style="width:80px"></label><label>Score mínimo <select id="kly_min"><option value="7">7/10</option><option value="8">8/10</option><option value="9">9/10</option><option value="10">10/10</option></select></label></div>
+   <div class="mu" style="font-size:12px;margin:6px 0">Risco máximo por score (% da banca). Score 6 ou menos: não opera.</div>
+   <div class="row"><label>7/10 <input id="kly_s7" type="number" step="0.05" value="0.25" style="width:70px"></label><label>8/10 <input id="kly_s8" type="number" step="0.05" value="0.5" style="width:70px"></label><label>9/10 <input id="kly_s9" type="number" step="0.05" value="0.75" style="width:70px"></label><label>10/10 <input id="kly_s10" type="number" step="0.05" value="1" style="width:70px"></label></div>
+   <div class="row"><label>Win rate estimado <select id="kly_src"><option value="auto">Automático (Simulação ao vivo)</option><option value="man">Só o valor manual</option></select></label><label>Manual (%) <input id="kly_p" type="number" step="0.5" value="55" style="width:70px"></label><label>Payout líquido (%) <input id="kly_pay" type="number" value="92" style="width:70px"></label></div>
+   <div class="row"><label>Ruína = perder (% da banca) <input id="kly_ruin" type="number" value="50" style="width:70px"></label><label>Risk of Ruin máximo (%) <input id="kly_rormax" type="number" step="0.5" value="1" style="width:70px"></label><label>Drawdown máx. (% , 0 = off) <input id="kly_dd" type="number" value="10" style="width:70px"></label></div>
+   <div class="mu" style="font-size:12px;margin:6px 0">No modo automático, o win rate vem da <b>Simulação ao vivo</b> (limite inferior de 95%, só com 30+ operações da estratégia). Sem dados suficientes, usa o valor manual. Se o Kelly der zero ou negativo (sem vantagem), o bot não opera.</div>
+   <h2 style="margin-top:12px">Prévia com a banca atual</h2><div id="kly_info" class="mu" style="font-size:12px;margin-bottom:8px"></div>
+   <div class="bt-w"><table class="bt-t"><tr><th>Score</th><th>Teto do score</th><th>Kelly frac.</th><th>RoR</th><th>Risco final</th><th>Entrada</th></tr><tbody id="kly_tbl"></tbody></table></div>
+   <div class="mu" style="font-size:12px;margin-top:8px">Nenhum gerenciamento garante recuperar perdas nem impede a banca de quebrar. Ele só controla a exposição. O Win rate usado é uma estimativa, e estimativa errada gera entrada errada.</div></div>
+ </section>
 
  <section class="page" id="p-hist"><div class="card"><h2>Sinais e operações</h2><div id="log"></div></div></section>
 
@@ -401,6 +434,8 @@ function handle(m){
  if((m.msg_type==="ping"&&!m.error)||m.msg_type==="forget_all")return;if(m.error&&m.echo_req&&m.echo_req.active_symbols)return;
  if(m.error&&/already subscribed/i.test(m.error.message||"")&&m.echo_req&&m.echo_req.ticks_history){const e=Object.assign({},m.echo_req);delete e.subscribe;qsend(e);return}
  if(m.error&&/rate limit/i.test(m.error.message||"")&&m.echo_req&&m.echo_req.ticks_history){rlRetry(m.echo_req);return}
+ if(m.error&&m.echo_req&&m.echo_req.passthrough&&m.echo_req.passthrough.tk){TKR.busy=false;log("Ticks: ordem recusada — "+(m.error.message||""),"dn");return}
+ if(m.error&&m.echo_req&&m.echo_req.buy&&tickMeta[m.echo_req.buy]){delete tickMeta[m.echo_req.buy];TKR.busy=false;log("Ticks: compra recusada — "+(m.error.message||""),"dn");return}
  if(m.error&&m.echo_req&&m.echo_req.passthrough&&m.echo_req.passthrough.grid!=null){const pt=m.echo_req.passthrough;delete GR.pos[pt.side+pt.grid];log("Grid: ordem recusada — "+(m.error.message||""),"dn");return}
  if(m.error&&m.echo_req&&m.echo_req.buy&&gridMeta[m.echo_req.buy]){const g=gridMeta[m.echo_req.buy];delete gridMeta[m.echo_req.buy];delete GR.pos[g.side+g.grid];log("Grid: compra recusada — "+(m.error.message||""),"dn");return}
  if(m.error&&m.echo_req&&m.echo_req.sell){sellSent.delete(m.echo_req.sell);log("Não foi possível fechar a operação: "+(m.error.message||""),"dn");return}
@@ -409,7 +444,7 @@ function handle(m){
  if(m.msg_type==="authorize"){acctId=m.authorize.loginid;cur=m.authorize.currency;
   const demo=m.authorize.is_virtual;$("acct").textContent=(demo?"DEMO ":"REAL ")+acctId;$("acct").className="badge "+(demo?"demo":"real");
   $("login").style.display="none";$("logout").style.display="";sendAcc({balance:1,subscribe:1});log("Conectado: "+acctId+(demo?" (demo)":" (REAL)"))}
- else if(m.msg_type==="balance"){cur=m.balance.currency;$("bal").textContent=m.balance.balance.toFixed(2)+" "+m.balance.currency;$("s1b").textContent=m.balance.balance.toFixed(2)}
+ else if(m.msg_type==="balance"){cur=m.balance.currency;balNum=m.balance.balance;if(!peakBal||(botOn&&balNum>peakBal))peakBal=balNum;$("bal").textContent=m.balance.balance.toFixed(2)+" "+m.balance.currency;$("s1b").textContent=m.balance.balance.toFixed(2)}
  else if(m.msg_type==="active_symbols"){reconcile(m.active_symbols||[]);symsLoaded=true;if(!started)startScan();else{buildSymSelect();renderMkt()}}
  else if(m.msg_type==="candles"){const arr=m.candles.map(c=>({t:c.epoch,o:+c.open,h:+c.high,l:+c.low,c:+c.close}));{const rid=m.echo_req&&m.echo_req.req_id;if(btPend[rid]){const f=btPend[rid];delete btPend[rid];f(arr);return}}const r=resolve(m);if(!r)return;const d=M[r.sym];if(!d)return;
   if(r.kind==="htf")d.h=d.h.length?mergeC(d.h,arr):arr;
@@ -417,6 +452,7 @@ function handle(m){
   else if(r.kind==="older"){if(d.c.length)d.c=arr.filter(c=>c.t<d.c[0].t).concat(d.c)}
   else{d.c=d.c.length?mergeC(d.c,arr):arr;if(arr.length&&d.c.length<230&&!d.older){d.older=true;qsend({ticks_history:r.sym,count:500,end:d.c[0].t-1,style:"candles",granularity:+$("gran").value,req_id:1002+d.n*3})}}
   if(r.sym===$("sym").value){bind();draw();analyse()}}
+ else if(m.msg_type==="tick"&&m.tick){tkTick(m.tick)}
  else if(m.msg_type==="ohlc"){const o=m.ohlc,t=+o.open_time,r=resolve(m);if(!r)return;const d=M[r.sym];if(!d)return;
   const c={t,o:+o.open,h:+o.high,l:+o.low,c:+o.close};
   if(r.kind==="htf2"){d.h2=d.h2||[];const L=d.h2[d.h2.length-1];if(L&&L.t===t)d.h2[d.h2.length-1]=c;else if(!L||t>L.t)d.h2.push(c);return}
@@ -427,10 +463,11 @@ function handle(m){
   else if(!L||t>L.t){d.c.push(c);if(d.c.length>1200)d.c.shift();if(botOn&&d.c.length>30)scanOn(r.sym);if(ppOn()&&d.c.length>230)paperClosed(r.sym);if(sgOn()&&d.c.length>230)sgClosed(r.sym);if(r.sym===$("sym").value)analyse()}
   if(botOn&&d.c.length>80)liveOn(r.sym);if(GR.on&&r.sym===GR.sym)gridTick();if(ppOn()&&d.c.length>230)paperLive(r.sym);if(sgOn()&&d.c.length>230)sgLive(r.sym);
   if(r.sym===$("sym").value){$("price").textContent="Preço: "+c.c;draw()}}
- else if(m.msg_type==="proposal"&&m.echo_req.passthrough){const pt=m.echo_req.passthrough;if(pt.grid!=null)gridMeta[m.proposal.id]=pt;sendAcc({buy:m.proposal.id,price:+m.echo_req.amount||curStake});}
+ else if(m.msg_type==="proposal"&&m.echo_req.passthrough){const pt=m.echo_req.passthrough;if(pt.grid!=null)gridMeta[m.proposal.id]=pt;if(pt.tk)tickMeta[m.proposal.id]=pt;sendAcc({buy:m.proposal.id,price:+m.echo_req.amount||curStake});}
  else if(m.msg_type==="buy"&&m.echo_req&&gridMeta[m.echo_req.buy]){gridBought(m)}
+ else if(m.msg_type==="buy"&&m.echo_req&&tickMeta[m.echo_req.buy]){tkBought(m)}
  else if(m.msg_type==="buy"){const id=m.buy.contract_id;openIds.add(id);saveRun();{const n0=Math.floor(Date.now()/1000),lc=(M[pend&&pend.sym]||{c:candles}).c.slice(-1)[0];if(pend)trades.push({id,type:pend.type,sym:pend.sym,stake:curStake,t0:n0,exp:n0+(pend.mult?(pend.mtime>0?pend.mtime*60:86400):pend.dur*60),noexp:pend.mult&&!(pend.mtime>0),mult:pend.mult?pend.m:0,sl:pend.sl,tp:pend.tp,px:lc?lc.c:0});if(trades.length>15)trades.shift()}if(pend&&pend.mult&&pend.mtime>0)setTimeout(()=>{if(openIds.has(id))sendAcc({sell:id,price:0})},pend.mtime*60000);log("Compra #"+id+" a "+m.buy.buy_price,"up");stats.n++;tradesToday++;$("s2").textContent=stats.n;sendAcc({proposal_open_contract:1,contract_id:id,subscribe:1})}
- else if(m.msg_type==="proposal_open_contract"){const c=m.proposal_open_contract;if(gridOpen[c.contract_id]){gridPoc(c,m);return}if(!c.is_sold)updBar(c);if(c.is_sold&&openIds.has(c.contract_id)){openIds.delete(c.contract_id);sellSent.delete(c.contract_id);saveRun();trades=trades.filter(t=>t.id!==c.contract_id);clearBar();draw();sendAcc({forget:m.subscription.id});
+ else if(m.msg_type==="proposal_open_contract"){const c=m.proposal_open_contract;if(gridOpen[c.contract_id]){gridPoc(c,m);return}if(tkOpen[c.contract_id]){tkPoc(c,m);return}if(!c.is_sold)updBar(c);if(c.is_sold&&openIds.has(c.contract_id)){openIds.delete(c.contract_id);sellSent.delete(c.contract_id);saveRun();trades=trades.filter(t=>t.id!==c.contract_id);clearBar();draw();sendAcc({forget:m.subscription.id});
   const p=+c.profit;stats.pl+=p;p>0?stats.w++:stats.l++;consLoss=p>0?0:consLoss+1;$("s3").textContent=stats.w;$("s4").textContent=stats.l;
   $("s5").textContent=stats.pl.toFixed(2);$("s5").className=stats.pl>=0?"up":"dn";manage(p);log("Resultado #"+c.contract_id+": "+p.toFixed(2),p>0?"up":"dn")}}
 }
@@ -456,7 +493,7 @@ const S={
 };
 const NAMES={pbe:"Pullback+Engolfo",brk:"Rompimento",smc:"SMC simples",smcf:"SMC completo",sr:"S/R retração",fib:"Fibonacci 0,618",fim:"Fimathe"};
 const GR={on:false,show:false,sym:"frxEURUSD",lo:0,hi:0,n:20,mode:"a",inv:20,mult:30,both:false,lines:[],pos:{},pl:0,w:0,l:0,z:null,px:null,trigOn:false,trigPx:0,trigHit:true,tpslOn:false,tpPx:0,slPx:0,sell:true};let gridMeta={},gridOpen={};
-let sorosStep=0,htf2=[],htf2G=0,riskDay="",tradesToday=0,consLoss=0,smcInfo=null,fimG=null,srLv=[],fibG=null,smcBlock="",smcEv=null,lastWhy="",htf=[],htfG=900,sweepName="";
+let balNum=null,peakBal=0,sorosStep=0,htf2=[],htf2G=0,riskDay="",tradesToday=0,consLoss=0,smcInfo=null,fimG=null,srLv=[],fibG=null,smcBlock="",smcEv=null,lastWhy="",htf=[],htfG=900,sweepName="";
 const HMAP={60:900,300:3600,900:14400,3600:86400},ZMAP={60:300,300:900,900:3600,3600:14400};
 const g2n=g=>({60:"M1",300:"M5",900:"M15",3600:"H1",14400:"H4",86400:"D1"}[g]||g+"s");
 function mkEv(A,d,j,type,from){
@@ -655,10 +692,10 @@ function scanOn(sym){
  if(cand.length&&!candTimer)candTimer=setTimeout(pickBest,2500);
 }
 function pickBest(){candTimer=null;const list=cand.splice(0);if(!botOn||!list.length)return;
- const g={};list.forEach(c=>{const key=c.sym+c.dir,x=g[key]||(g[key]={sym:c.sym,name:c.name,dir:c.dir,score:0,ks:[]});x.score+=c.score;x.ks.push(NAMES[c.k]);if(c.info)x.info=c.info});
+ const g={};list.forEach(c=>{const key=c.sym+c.dir,x=g[key]||(g[key]={sym:c.sym,name:c.name,dir:c.dir,score:0,ks:[],kk:[]});x.score+=c.score;x.ks.push(NAMES[c.k]);x.kk.push(c.k);if(c.info)x.info=c.info});
  const arr=Object.values(g).sort((p,q)=>q.score-p.score),best=arr[0];
  log("Melhor oportunidade: "+best.name+" "+(best.dir==="CALL"?"COMPRA ▲":"VENDA ▼")+" · nota "+best.score+" ("+best.ks.join(" + ")+")"+(arr.length>1?" · "+(arr.length-1)+" outra(s) descartada(s)":""),"up");
- if(!$("sigonly").checked)trade(best.dir,best.sym,best.info)}
+ if(!$("sigonly").checked)trade(best.dir,best.sym,best.info,score10(best),best.kk)}
 let resumePending=false,lastSigM={},dragL=[],chartMap=null,dragging=null,stopSent=false,trades=[],pend=null,openIds=new Set(),botOn=false,busy=false,busyAt=0,lossAcc=0,curStake=0,nextStake=0,startPl=0;
 const ctm=()=>$("ctype").value==="mult";
 const num=id=>+$(id).value||0,r2=x=>Math.round(x*100)/100;
@@ -666,10 +703,10 @@ function showNext(){$("s6").textContent=nextStake?nextStake.toFixed(2):"—"}
 function resetStake(){lossAcc=0;sorosStep=0;nextStake=Math.max(0.35,num("stake"));showNext()}
 function setBot(on,why){botOn=on;$("pw").textContent=on?"⏹ Desligar bot":"▶ Ligar bot";$("pw").className=on?"r":"p";
  $("s7").textContent=on?"ON":"OFF";$("s7").className=on?"up":"dn";$("stline").textContent=on?"● OPERANDO":"● AGUARDANDO";
- if(on){stopSent=false;if(why!=="resume"){startPl=stats.pl;resetStake()}log(why==="resume"?"Bot RETOMADO após recarregar a página":"Bot LIGADO","up")}else{log("Bot DESLIGADO"+(why?" — "+why:""),"dn");if($("closeOnStop").checked&&openIds.size)closeOpen("bot desligado")}saveRun()}
+ if(on){stopSent=false;if(why!=="resume"){startPl=stats.pl;resetStake();peakBal=balNum||0}log(why==="resume"?"Bot RETOMADO após recarregar a página":"Bot LIGADO","up")}else{log("Bot DESLIGADO"+(why?" — "+why:""),"dn");if($("closeOnStop").checked&&openIds.size)closeOpen("bot desligado")}saveRun()}
 $("pw").onclick=()=>setBot(!botOn);
 $("stake").onchange=()=>{if(!lossAcc)resetStake()};
-$("mg").onchange=resetStake;
+$("mg").onchange=()=>{if($("mg").checked)$("mg_k").checked=false;resetStake()};
 function manage(p){
  busy=false;saveRun();
  if($("mg").checked){
@@ -686,14 +723,15 @@ function manage(p){
   else if(num("sw")>0&&sp>=num("sw"))setBot(false,"Stop Win atingido (+"+sp.toFixed(2)+")");
  }
 }
-function trade(type,sym,info){
+function trade(type,sym,info,s10,kk){
  if(!acc||acc.readyState!==1){log("Conta desconectada.","dn");return}
  if(busy&&Date.now()-busyAt<(ctm()?(num("mtime")>0?num("mtime")*60+90:86400):num("dur")*60+90)*1000){log("Aguardando a operação anterior terminar.","mu");return}
  const dayK=new Date().toISOString().slice(0,10);if(riskDay!==dayK){riskDay=dayK;tradesToday=0}
  if(num("smc_maxd")>0&&tradesToday>=num("smc_maxd")){log("Limite de operações do dia atingido ("+tradesToday+").","dn");return}
  if(num("smc_pause")>0&&consLoss>=num("smc_pause")){log("Bot pausado: "+consLoss+" perdas seguidas. Resete a sessão para continuar.","dn");return}
  if(!nextStake)resetStake();
- curStake=nextStake;busy=true;busyAt=Date.now();pend={type,dur:num("dur"),sym:sym||$("sym").value,mult:ctm(),mtime:num("mtime"),m:num("mult")};
+ let kp=null;if($("mg_k").checked){kp=kellyPlan(s10==null?0:s10,kk);log(kp.msg,kp.ok?"mu":"dn");if(!kp.ok)return}
+ curStake=kp?kp.stake:nextStake;busy=true;busyAt=Date.now();pend={type,dur:num("dur"),sym:sym||$("sym").value,mult:ctm(),mtime:num("mtime"),m:num("mult")};
  if(ctm()){const lo={};let sl=num("msl")>0?Math.min(num("msl"),r2(curStake*0.9)):0,tp=$("r21").checked&&sl>0?r2(sl*2):num("mtp");if(info&&info.slPx&&info.en){const raw=curStake*num("mult")*Math.abs(info.en-info.slPx)/info.en;sl=Math.max(0.01,Math.min(r2(raw),r2(curStake*0.9)));tp=r2(sl*2)}if(tp>0)lo.take_profit=tp;if(sl>0)lo.stop_loss=sl;pend.sl=sl;pend.tp=tp;log("Multiplicador x"+num("mult")+" · SL "+sl+" · TP "+tp+($("r21").checked?" (2:1)":""),"mu");
   const q={proposal:1,amount:curStake,basis:"stake",contract_type:type==="CALL"?"MULTUP":"MULTDOWN",currency:cur,multiplier:num("mult"),underlying_symbol:pend.sym,passthrough:{bot:1}};
   if(Object.keys(lo).length)q.limit_order=lo;sendAcc(q)}
@@ -990,7 +1028,7 @@ setInterval(sgRender,1000);sgRender();
 
 
 // ---- Persistência: configuração e estado do bot sobrevivem a recarregar a página ----
-const PERSIST=["closeOnStop","gr_sym","gr_lo","gr_hi","gr_n","gr_mode","gr_inv","gr_mult","gr_side","gr_trig","gr_trigpx","gr_tpsl","gr_tppx","gr_slpx","gr_sell","g_cry","stake","dur","ctype","mult","mtp","msl","mtime","mg","sl","sw","scan","g_fx","g_xau","g_us","g_syn","smc_min","smc_hr","smc_h0","smc_h1","smc_maxd","smc_pause","r21","sigonly","gran","pp_p","pp_st","sg_snd"];
+const PERSIST=["mg_k","kly_f","kly_cap","kly_min","kly_s7","kly_s8","kly_s9","kly_s10","kly_src","kly_p","kly_pay","kly_ruin","kly_rormax","kly_dd","closeOnStop","gr_sym","gr_lo","gr_hi","gr_n","gr_mode","gr_inv","gr_mult","gr_side","gr_trig","gr_trigpx","gr_tpsl","gr_tppx","gr_slpx","gr_sell","g_cry","stake","dur","ctype","mult","mtp","msl","mtime","mg","sl","sw","scan","g_fx","g_xau","g_us","g_syn","smc_min","smc_hr","smc_h0","smc_h1","smc_maxd","smc_pause","r21","sigonly","gran","pp_p","pp_st","sg_snd"];
 function saveCfg(){try{const o={v:{},b:{}};PERSIST.forEach(id=>{const e=$(id);if(!e)return;o.v[id]=e.type==="checkbox"?e.checked:e.value});document.querySelectorAll("[data-bot]").forEach(e=>{o.b[e.dataset.bot]=e.checked});localStorage.setItem("orby_cfg",JSON.stringify(o))}catch(e){}}
 function saveRun(){try{localStorage.setItem("orby_run",JSON.stringify({botOn,startPl,stats,lossAcc,sorosStep,nextStake,openIds:[...openIds]}))}catch(e){}}
 (function(){try{const r=JSON.parse(localStorage.getItem("orby_run")||"null");if(!r)return;Object.assign(stats,r.stats||{});startPl=r.startPl||0;lossAcc=r.lossAcc||0;sorosStep=r.sorosStep||0;nextStake=r.nextStake||0;(r.openIds||[]).forEach(id=>openIds.add(id));if(openIds.size){busy=true;busyAt=Date.now()}
@@ -1002,7 +1040,7 @@ function resetSession(){
  const ask=t=>typeof confirm==="function"?confirm(t):true;
  if(openIds.size&&!ask("Há uma operação aberta. Ela continua na Deriv, mas o painel deixará de acompanhá-la. Resetar mesmo assim?"))return;
  if(!openIds.size&&!ask("Zerar o PNL da sessão, os wins, os losses e o histórico? O bot continua ligado ou desligado como está."))return;
- stats.n=0;stats.w=0;stats.l=0;stats.pl=0;consLoss=0;tradesToday=0;startPl=0;lossAcc=0;sorosStep=0;busy=false;stopSent=false;openIds.clear();trades=[];cand.length=0;lastSigM={};
+ peakBal=balNum||0;stats.n=0;stats.w=0;stats.l=0;stats.pl=0;consLoss=0;tradesToday=0;startPl=0;lossAcc=0;sorosStep=0;busy=false;stopSent=false;openIds.clear();trades=[];cand.length=0;lastSigM={};
  resetStake();
  $("s2").textContent="0";$("s3").textContent="0";$("s4").textContent="0";$("s5").textContent="0.00";$("s5").className="";$("s8").textContent="—";
  $("log").innerHTML="";clearBar();draw();saveRun();
@@ -1069,5 +1107,70 @@ const sellSent=new Set();
 function closeOpen(reason){let n=0;openIds.forEach(id=>{if(sellSent.has(id))return;sellSent.add(id);sendAcc({sell:id,price:0});n++});
  log(n?"Fechando "+n+" operação(ões) aberta(s) ("+reason+")…":"Nenhuma operação aberta para fechar.","mu")}
 $("closeNow").onclick=()=>{if(!openIds.size){log("Não há operação aberta para fechar.","mu");return}closeOpen("fechado por você")};
+
+// ===== Gerenciamento estratégico: Kelly fracionado + Score + Risk of Ruin =====
+const kv=id=>+$(id).value;
+function score10(x){let v=Math.min(10,2*x.score);if(x.info&&x.info.score)v=Math.max(v,Math.min(10,Math.round(x.info.score/12*10)));return v}
+function wilsonLo(w,n){const p=w/n,z=1.96;return(p+z*z/(2*n)-z*Math.sqrt(p*(1-p)/n+z*z/(4*n*n)))/(1+z*z/n)}
+function pAuto(kk){if(!kk||!kk.length)return null;const cl=PT.filter(t=>(t.st==="win"||t.st==="loss")&&kk.includes(t.k));if(cl.length<30)return null;return{p:wilsonLo(cl.filter(t=>t.st==="win").length,cl.length),n:cl.length}}
+function riskScore(v){return v>=10?kv("kly_s10"):v>=9?kv("kly_s9"):v>=8?kv("kly_s8"):v>=7?kv("kly_s7"):0}
+function kellyPlan(v,kk){
+ const bank=balNum,pc=x=>(x*100).toFixed(2)+"%";if(!(bank>0))return{ok:false,msg:"Gerenciamento: saldo da conta ainda não carregado. Não opera."};
+ const minS=kv("kly_min")||7;if(v<minS)return{ok:false,msg:"Gerenciamento: score "+v+"/10 abaixo do mínimo ("+minS+"/10). Não opera."};
+ const b=(kv("kly_pay")||92)/100;let p=(kv("kly_p")||55)/100,src="manual";
+ if($("kly_src").value==="auto"){const a=pAuto(kk);if(a){p=a.p;src="Simulação ao vivo, "+a.n+" ops"}}
+ const q=1-p,K=(p*b-q)/b;
+ if(K<=0)return{ok:false,msg:"Gerenciamento: sem vantagem estatística (win rate "+(p*100).toFixed(1)+"% "+"["+src+"], payout "+(b*100).toFixed(0)+"%, Kelly "+(K*100).toFixed(1)+"%). Não opera."};
+ const fK=K*(kv("kly_f")||0.25),cap=(kv("kly_cap")||1)/100,fs=riskScore(v)/100,E=p*b-q,vr=p*b*b+q-E*E,R=(kv("kly_ruin")||50)/100,lim=(kv("kly_rormax")||1)/100,
+  fR=(lim>0&&lim<1)?2*E*R/(vr*(-Math.log(lim))):1,ddMax=(kv("kly_dd")||0)/100,dd=peakBal>0?Math.max(0,(peakBal-bank)/peakBal):0;
+ let ddF=1;if(ddMax>0){ddF=Math.max(0,1-dd/ddMax);if(ddF<=0)return{ok:false,msg:"Gerenciamento: drawdown da sessão em "+(dd*100).toFixed(1)+"% chegou ao limite ("+(ddMax*100).toFixed(0)+"%). Não opera."}}
+ const f=Math.min(fs,fK,cap,fR)*ddF,stake=r2(bank*f),ror=Math.min(1,Math.exp(-2*E*R/(f*vr)));
+ const info={K,p,src,fs,fK,cap,fR,ddF,f,ror,stake};
+ if(stake<0.35)return Object.assign(info,{ok:false,msg:"Gerenciamento: a entrada calculada ("+stake.toFixed(2)+") ficou abaixo do mínimo de 0,35. A banca é pequena para esse risco. Não opera."});
+ return Object.assign(info,{ok:true,msg:"Gerenciamento: score "+v+"/10 · win rate "+(p*100).toFixed(1)+"% ["+src+"] · Kelly "+pc(K)+" × "+(kv("kly_f")||0.25)+" = "+pc(fK)+" · teto do score "+pc(fs)+" · cap "+pc(cap)+" · RoR "+pc(fR)+(ddF<1?" · drawdown ×"+ddF.toFixed(2):"")+" → risco "+pc(f)+" da banca = entrada "+stake.toFixed(2)})}
+function klyRender(){const tb=$("kly_tbl");if(!tb)return;const pg=$("p-gest");if(pg&&pg.classList&&pg.classList.contains&&!pg.classList.contains("on"))return;
+ const pc=x=>(x*100).toFixed(2)+"%";let h="",inf="";
+ for(const v of[7,8,9,10]){const r=kellyPlan(v,BK);
+  if(r.K===undefined){h+='<tr><td>'+v+'/10</td><td colspan="5" class="mu" style="font-family:inherit">'+r.msg.replace("Gerenciamento: ","")+'</td></tr>';continue}
+  if(!inf)inf="Banca "+balNum.toFixed(2)+" · win rate usado "+(r.p*100).toFixed(1)+"% ["+r.src+"] · Kelly completo "+pc(r.K)+" · Risk of Ruin com o risco final do score 10: "+(r.ror*100).toFixed(2)+"%";
+  h+='<tr><td>'+v+'/10</td><td>'+pc(r.fs)+'</td><td>'+pc(r.fK)+'</td><td>'+pc(r.fR)+'</td><td><b>'+pc(r.f)+'</b></td><td>'+(r.stake>=0.35?r.stake.toFixed(2):'<span class="mu">'+r.stake.toFixed(2)+' (abaixo do mínimo)</span>')+'</td></tr>'}
+ tb.innerHTML=h;$("kly_info").textContent=inf||"Aguardando o saldo da conta e dados de vantagem estatística."}
+$("mg_k").onchange=()=>{if($("mg_k").checked)$("mg").checked=false;resetStake();klyRender()};
+["kly_f","kly_cap","kly_min","kly_s7","kly_s8","kly_s9","kly_s10","kly_src","kly_p","kly_pay","kly_ruin","kly_rormax","kly_dd"].forEach(id=>{$(id).oninput=$(id).onchange=klyRender});
+setInterval(klyRender,2500);klyRender();
+
+// ================= BOT DE TICKS =================
+const TK={on:false,sym:"",P:[],tn:0,pend:[],cool:{},st:{mom:{n:0,w:0,pl:0},rev:{n:0,w:0,pl:0},ema:{n:0,w:0,pl:0}},real:false},TKR={n:0,w:0,l:0,pl:0,busy:false};let tickMeta={},tkOpen={};
+const TKN={mom:"Momentum",rev:"Reversão",ema:"Médias EMA 5x20"};
+function tkEma(P,n){const k=2/(n+1);let e=P[Math.max(0,P.length-3*n)];for(let i=Math.max(1,P.length-3*n+1);i<P.length;i++)e=P[i]*k+e*(1-k);return e}
+function tkSig(k,P,N){const n=P.length;if(n<40)return null;
+ if(k==="ema"){const a=P.slice(0,-1),d1=tkEma(P,5)-tkEma(P,20),d0=tkEma(a,5)-tkEma(a,20);return d0<=0&&d1>0?"CALL":d0>=0&&d1<0?"PUT":null}
+ let up=true,dn=true;for(let i=n-N;i<n;i++){if(!(P[i]>P[i-1]))up=false;if(!(P[i]<P[i-1]))dn=false}
+ if(up)return k==="mom"?"CALL":"PUT";if(dn)return k==="mom"?"PUT":"CALL";return null}
+function tkStart(){const sym=$("tk_sym").value;TK.sym=sym;TK.P=[];TK.tn=0;TK.pend=[];TK.cool={};TK.on=true;TK.real=$("tk_mode").value==="real";TKR.busy=false;TKR.start=TKR.pl;
+ if(pub&&pub.readyState===1){pub.send(JSON.stringify({forget_all:"ticks"}));qsend({ticks:sym,subscribe:1,req_id:7001})}
+ $("tk_go").textContent="■ Parar monitoramento";$("tk_go").className="r";$("tk_msg").textContent=TK.real?"Modo REAL: as ordens usam a conta conectada.":"Modo simulação: nenhuma ordem é enviada.";log("Bot de Ticks iniciado em "+TK.sym+(TK.real?" (REAL)":" (simulação)"),"up")}
+function tkStop(why){TK.on=false;TK.real=false;if(pub&&pub.readyState===1)pub.send(JSON.stringify({forget_all:"ticks"}));$("tk_go").textContent="▶ Iniciar monitoramento";$("tk_go").className="p";log("Bot de Ticks parado"+(why?" — "+why:""),"dn")}
+$("tk_go").onclick=()=>{if(TK.on)tkStop();else{if($("tk_mode").value==="real"&&(!acc||acc.readyState!==1)){$("tk_msg").textContent="Entre com a Deriv primeiro para usar o modo real.";return}tkStart()}};
+function tkTick(t){if(!TK.on||t.symbol&&t.symbol!==TK.sym)return;const px=+t.quote,D=Math.max(1,Math.min(10,Math.round(+$("tk_dur").value)||5)),N=Math.max(2,Math.min(8,Math.round(+$("tk_n").value)||3)),pay=(+$("tk_pay").value||92)/100;
+ TK.P.push(px);if(TK.P.length>400)TK.P.shift();TK.tn++;TK.last=px;
+ TK.pend=TK.pend.filter(o=>{if(TK.tn===o.entry)o.en=px;if(TK.tn>=o.exit){if(o.en==null)return false;const win=o.dir==="CALL"?px>o.en:px<o.en,s=TK.st[o.k];s.n++;if(win){s.w++;s.pl+=pay}else s.pl-=1;return false}return true});
+ for(const k of["mom","rev","ema"]){if(TK.tn<(TK.cool[k]||0))continue;const sg=tkSig(k,TK.P,N);if(!sg)continue;TK.cool[k]=TK.tn+D+1;TK.pend.push({k,dir:sg,entry:TK.tn+1,exit:TK.tn+1+D,en:null});
+  if(TK.real&&k===$("tk_strat").value)tkReal(sg,D)}}
+function tkReal(dir,D){if(TKR.busy||!acc||acc.readyState!==1)return;const sl=+$("tk_sl").value||0,sw=+$("tk_sw").value||0,sp=TKR.pl-TKR.start;
+ if(sl>0&&sp<=-sl){tkStop("Stop Loss atingido ("+sp.toFixed(2)+")");return}if(sw>0&&sp>=sw){tkStop("Stop Win atingido (+"+sp.toFixed(2)+")");return}
+ const stake=Math.max(0.35,+$("tk_stake").value||1);TKR.busy=true;TKR.stake=stake;
+ sendAcc({proposal:1,amount:stake,basis:"stake",contract_type:dir,currency:cur,duration:D,duration_unit:"t",underlying_symbol:TK.sym,passthrough:{tk:1,dir}});log("Ticks: "+(dir==="CALL"?"COMPRA ▲":"VENDA ▼")+" · "+D+" ticks · stake "+stake.toFixed(2),dir==="CALL"?"up":"dn")}
+function tkBought(m){const g=tickMeta[m.echo_req.buy];delete tickMeta[m.echo_req.buy];const id=m.buy.contract_id;tkOpen[id]={dir:g.dir};sendAcc({proposal_open_contract:1,contract_id:id,subscribe:1})}
+function tkPoc(c,m){if(!c.is_sold)return;const p=+c.profit||0;delete tkOpen[c.contract_id];if(m&&m.subscription)sendAcc({forget:m.subscription.id});TKR.n++;TKR.pl+=p;p>0?TKR.w++:TKR.l++;TKR.busy=false;
+ log("Ticks: contrato #"+c.contract_id+" "+(p>=0?"+":"")+p.toFixed(2),p>0?"up":"dn");
+ const sl=+$("tk_sl").value||0,sw=+$("tk_sw").value||0,sp=TKR.pl-TKR.start;if(TK.on&&TK.real){if(sl>0&&sp<=-sl)tkStop("Stop Loss atingido ("+sp.toFixed(2)+")");else if(sw>0&&sp>=sw)tkStop("Stop Win atingido (+"+sp.toFixed(2)+")")}}
+function tkRender(){const pay=(+$("tk_pay").value||92)/100,be=1/(1+pay),el=$("tk_tbl");if(!el)return;
+ $("tk_live").innerHTML=TK.on?'<b style="color:#6ef0a0">● MONITORANDO</b> '+TK.sym+' · último preço <b>'+(TK.last!=null?TK.last:"—")+'</b> · ticks recebidos: '+TK.tn+' · simulações em andamento: '+TK.pend.length+(TK.real?'<br><b style="color:#ff5c6c">MODO REAL</b> — estratégia: '+TKN[$("tk_strat").value]:'<br>Modo simulação'):"Parado.";
+ el.innerHTML=["mom","rev","ema"].map(k=>{const s=TK.st[k],p=s.n?s.w/s.n:0,lo=s.n?wilsonLo(s.w,s.n):0,hi=s.n?1-wilsonLo(s.n-s.w,s.n):0;
+  return'<tr><td style="font-family:inherit">'+TKN[k]+'</td><td>'+s.n+'</td><td style="color:'+(s.n&&p>=be?"#6ef0a0":"#ff5c6c")+'">'+(s.n?(p*100).toFixed(1)+"%":"—")+'</td><td>'+(s.n?(lo*100).toFixed(0)+"–"+(hi*100).toFixed(0)+"%":"—")+'</td><td style="color:'+clr(s.pl)+'">'+f2(s.pl)+'</td></tr>'}).join("");
+ $("tk_be").textContent="Com payout de "+(pay*100).toFixed(0)+"%, o ponto de equilíbrio é "+(be*100).toFixed(1)+"% de acerto. O intervalo (IC 95%) mostra a incerteza: com poucas operações ele é largo, e um win rate alto pode ser só sorte. Resultado em unidades de stake.";
+ $("tk_real").innerHTML=TKR.n?'Operações: <b>'+TKR.n+'</b> ('+TKR.w+' wins / '+TKR.l+' losses) · resultado <b style="color:'+clr(TKR.pl)+'">'+f2(TKR.pl)+'</b>':"Nenhuma operação real ainda."}
+setInterval(tkRender,1000);tkRender();
 init();
 </script></body></html>
